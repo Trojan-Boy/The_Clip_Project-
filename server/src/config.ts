@@ -5,11 +5,13 @@ import { config as loadDotenv } from "dotenv";
 import { resolvePaperclipEnvPath } from "./paths.js";
 import { maybeRepairLegacyWorktreeConfigAndEnvFiles } from "./worktree-config.js";
 import {
+  AGENT_ADAPTER_TYPES,
   AUTH_BASE_URL_MODES,
   DEPLOYMENT_EXPOSURES,
   DEPLOYMENT_MODES,
   SECRET_PROVIDERS,
   STORAGE_PROVIDERS,
+  type AgentAdapterType,
   type AuthBaseUrlMode,
   type DeploymentExposure,
   type DeploymentMode,
@@ -73,6 +75,8 @@ export interface Config {
   heartbeatSchedulerEnabled: boolean;
   heartbeatSchedulerIntervalMs: number;
   companyDeletionEnabled: boolean;
+  /** Default adapter type for new agents, set via LLM_PROVIDER env var */
+  defaultAdapterType: AgentAdapterType;
 }
 
 export function loadConfig(): Config {
@@ -213,6 +217,26 @@ export function loadConfig(): Config {
       resolveDefaultBackupDir(),
   );
 
+  // LLM_PROVIDER env var: maps friendly names to adapter types
+  const llmProviderRaw = process.env.LLM_PROVIDER?.trim().toLowerCase();
+  const llmProviderMap: Record<string, AgentAdapterType> = {
+    anthropic: "claude_local",
+    claude: "claude_local",
+    openrouter: "openrouter",
+    ollama: "ollama",
+    codex: "codex_local",
+    gemini: "gemini_local",
+  };
+  let defaultAdapterType: AgentAdapterType = "claude_local";
+  if (llmProviderRaw) {
+    const mapped = llmProviderMap[llmProviderRaw];
+    if (mapped) {
+      defaultAdapterType = mapped;
+    } else if (AGENT_ADAPTER_TYPES.includes(llmProviderRaw as AgentAdapterType)) {
+      defaultAdapterType = llmProviderRaw as AgentAdapterType;
+    }
+  }
+
   return {
     deploymentMode,
     deploymentExposure,
@@ -227,7 +251,7 @@ export function loadConfig(): Config {
     embeddedPostgresDataDir: resolveHomeAwarePath(
       fileConfig?.database.embeddedPostgresDataDir ?? resolveDefaultEmbeddedPostgresDir(),
     ),
-    embeddedPostgresPort: fileConfig?.database.embeddedPostgresPort ?? 54329,
+    embeddedPostgresPort: fileConfig?.database.embeddedPostgresPort ?? 54400,
     databaseBackupEnabled,
     databaseBackupIntervalMinutes,
     databaseBackupRetentionDays,
@@ -255,5 +279,6 @@ export function loadConfig(): Config {
     heartbeatSchedulerEnabled: process.env.HEARTBEAT_SCHEDULER_ENABLED !== "false",
     heartbeatSchedulerIntervalMs: Math.max(10000, Number(process.env.HEARTBEAT_SCHEDULER_INTERVAL_MS) || 30000),
     companyDeletionEnabled,
+    defaultAdapterType,
   };
 }

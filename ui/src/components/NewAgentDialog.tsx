@@ -14,10 +14,12 @@ import {
   ArrowLeft,
   Bot,
   Code,
+  Cloud,
   Gem,
   MousePointer2,
   Sparkles,
   Terminal,
+  Wifi,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OpenCodeLogoIcon } from "./OpenCodeLogoIcon";
@@ -31,7 +33,9 @@ type AdvancedAdapterType =
   | "pi_local"
   | "cursor"
   | "openclaw_gateway"
-  | "hermes_local";
+  | "hermes_local"
+  | "openrouter"
+  | "ollama";
 
 const ADVANCED_ADAPTER_OPTIONS: Array<{
   value: AdvancedAdapterType;
@@ -53,6 +57,18 @@ const ADVANCED_ADAPTER_OPTIONS: Array<{
     icon: Code,
     desc: "Local Codex agent",
     recommended: true,
+  },
+  {
+    value: "openrouter",
+    label: "OpenRouter",
+    icon: Cloud,
+    desc: "300+ models, free tier available",
+  },
+  {
+    value: "ollama",
+    label: "Ollama",
+    icon: Wifi,
+    desc: "Local LLMs, fully private",
   },
   {
     value: "gemini_local",

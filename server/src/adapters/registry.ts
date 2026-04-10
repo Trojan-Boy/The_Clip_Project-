@@ -81,6 +81,19 @@ import {
 } from "hermes-paperclip-adapter";
 import { processAdapter } from "./process/index.js";
 import { httpAdapter } from "./http/index.js";
+import {
+  execute as openrouterExecute,
+  testEnvironment as openrouterTestEnvironment,
+  sessionCodec as openrouterSessionCodec,
+} from "@paperclipai/adapter-openrouter/server";
+import { agentConfigurationDoc as openrouterAgentConfigurationDoc, models as openrouterModels } from "@paperclipai/adapter-openrouter";
+import {
+  execute as ollamaExecute,
+  testEnvironment as ollamaTestEnvironment,
+  sessionCodec as ollamaSessionCodec,
+  listOllamaModels,
+} from "@paperclipai/adapter-ollama/server";
+import { agentConfigurationDoc as ollamaAgentConfigurationDoc, models as ollamaModels } from "@paperclipai/adapter-ollama";
 
 const claudeLocalAdapter: ServerAdapterModule = {
   type: "claude_local",
@@ -188,6 +201,27 @@ const hermesLocalAdapter: ServerAdapterModule = {
   detectModel: () => detectModelFromHermes(),
 };
 
+const openrouterAdapter: ServerAdapterModule = {
+  type: "openrouter",
+  execute: openrouterExecute,
+  testEnvironment: openrouterTestEnvironment,
+  sessionCodec: openrouterSessionCodec,
+  models: openrouterModels,
+  supportsLocalAgentJwt: false,
+  agentConfigurationDoc: openrouterAgentConfigurationDoc,
+};
+
+const ollamaAdapter: ServerAdapterModule = {
+  type: "ollama",
+  execute: ollamaExecute,
+  testEnvironment: ollamaTestEnvironment,
+  sessionCodec: ollamaSessionCodec,
+  models: ollamaModels,
+  listModels: listOllamaModels,
+  supportsLocalAgentJwt: false,
+  agentConfigurationDoc: ollamaAgentConfigurationDoc,
+};
+
 const adaptersByType = new Map<string, ServerAdapterModule>(
   [
     claudeLocalAdapter,
@@ -198,6 +232,8 @@ const adaptersByType = new Map<string, ServerAdapterModule>(
     geminiLocalAdapter,
     openclawGatewayAdapter,
     hermesLocalAdapter,
+    openrouterAdapter,
+    ollamaAdapter,
     processAdapter,
     httpAdapter,
   ].map((a) => [a.type, a]),

@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Db } from "@paperclipai/db";
 import { and, count, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { heartbeatRuns, instanceUserRoles, invites } from "@paperclipai/db";
-import type { DeploymentExposure, DeploymentMode } from "@paperclipai/shared";
+import type { AgentAdapterType, DeploymentExposure, DeploymentMode } from "@paperclipai/shared";
 import { readPersistedDevServerStatus, toDevServerHealthStatus } from "../dev-server-status.js";
 import { instanceSettingsService } from "../services/instance-settings.js";
 import { serverVersion } from "../version.js";
@@ -14,11 +14,13 @@ export function healthRoutes(
     deploymentExposure: DeploymentExposure;
     authReady: boolean;
     companyDeletionEnabled: boolean;
+    defaultAdapterType: AgentAdapterType;
   } = {
     deploymentMode: "local_trusted",
     deploymentExposure: "private",
     authReady: true,
     companyDeletionEnabled: true,
+    defaultAdapterType: "claude_local",
   },
 ) {
   const router = Router();
@@ -96,6 +98,7 @@ export function healthRoutes(
       features: {
         companyDeletionEnabled: opts.companyDeletionEnabled,
       },
+      defaultAdapterType: opts.defaultAdapterType,
       ...(devServer ? { devServer } : {}),
     });
   });

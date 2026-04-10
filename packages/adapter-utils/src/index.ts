@@ -51,3 +51,8 @@ export {
   redactTranscriptEntryPaths,
 } from "./log-redaction.js";
 export { inferOpenAiCompatibleBiller } from "./billing.js";
+// Server-only modules (paperclip-tools, tool-executor, agentic-loop) are
+// exported from "./server.js" to avoid pulling Node.js built-ins into the
+// browser bundle.
+export type { ToolExecutorContext } from "./tool-executor.js";
+export type { PaperclipToolCall, PaperclipToolResult } from "./paperclip-tools.js";

@@ -526,6 +526,7 @@ export async function startServer(): Promise<StartedServer> {
     bindHost: config.host,
     authReady,
     companyDeletionEnabled: config.companyDeletionEnabled,
+    defaultAdapterType: config.defaultAdapterType,
     betterAuthHandler,
     resolveSession,
   });

@@ -251,7 +251,7 @@ export function resolveDatabaseTarget(): ResolvedDatabaseTarget {
     };
   }
 
-  const port = config?.database?.embeddedPostgresPort ?? 54329;
+  const port = config?.database?.embeddedPostgresPort ?? 54400;
   const dataDir = resolveHomeAwarePath(
     config?.database?.embeddedPostgresDataDir ?? resolveDefaultEmbeddedPostgresDir(),
   );

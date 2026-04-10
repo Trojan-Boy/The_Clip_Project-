@@ -23,18 +23,18 @@ async function main(): Promise<void> {
     const payload =
       state.status === "upToDate"
         ? {
-            source: connection.source,
-            status: "upToDate" as const,
-            tableCount: state.tableCount,
-            pendingMigrations: [] as string[],
-          }
+          source: connection.source,
+          status: "upToDate" as const,
+          tableCount: state.tableCount,
+          pendingMigrations: [] as string[],
+        }
         : {
-            source: connection.source,
-            status: "needsMigrations" as const,
-            tableCount: state.tableCount,
-            pendingMigrations: state.pendingMigrations,
-            reason: state.reason,
-          };
+          source: connection.source,
+          status: "needsMigrations" as const,
+          tableCount: state.tableCount,
+          pendingMigrations: state.pendingMigrations,
+          reason: state.reason,
+        };
 
     if (jsonMode) {
       console.log(JSON.stringify(payload));

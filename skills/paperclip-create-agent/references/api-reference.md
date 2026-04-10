@@ -39,10 +39,10 @@ Request body matches agent create shape:
   "reportsTo": "uuid-or-null",
   "capabilities": "Owns architecture and engineering execution",
   "desiredSkills": ["vercel-labs/agent-browser/agent-browser"],
-  "adapterType": "claude_local",
+  "adapterType": "openrouter",
   "adapterConfig": {
-    "cwd": "/absolute/path",
-    "model": "claude-sonnet-4-5-20250929",
+    "model": "google/gemini-2.5-flash",
+    "timeoutSec": 120,
     "promptTemplate": "You are CTO..."
   },
   "runtimeConfig": {

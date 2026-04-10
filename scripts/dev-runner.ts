@@ -575,11 +575,11 @@ async function maybeAutoRestartChild() {
   }
 
   try {
-    await maybePreflightMigrations({
-      autoApply: true,
-      interactive: false,
-      exitOnDecline: false,
-    });
+    // await maybePreflightMigrations({
+    //   autoApply: true,
+    //   interactive: false,
+    //   exitOnDecline: false,
+    // });
     await stopChildForRestart();
     await startServerChild();
   } catch (error) {
@@ -642,7 +642,7 @@ process.on("SIGTERM", () => {
   void shutdown("SIGTERM");
 });
 
-await maybePreflightMigrations();
+// await maybePreflightMigrations();
 await startServerChild();
 installDevIntervals();
 

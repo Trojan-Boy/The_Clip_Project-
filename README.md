@@ -57,6 +57,8 @@ It looks like a task manager — but under the hood it has org charts, budgets, 
     <td align="center"><img src="doc/assets/logos/cursor.svg" width="32" alt="Cursor" /><br/><sub>Cursor</sub></td>
     <td align="center"><img src="doc/assets/logos/bash.svg" width="32" alt="Bash" /><br/><sub>Bash</sub></td>
     <td align="center"><img src="doc/assets/logos/http.svg" width="32" alt="HTTP" /><br/><sub>HTTP</sub></td>
+    <td align="center">☁️<br/><sub>OpenRouter</sub></td>
+    <td align="center">🦙<br/><sub>Ollama</sub></td>
   </tr>
 </table>
 
@@ -65,6 +67,48 @@ It looks like a task manager — but under the hood it has org charts, budgets, 
 </div>
 
 <br/>
+
+## LLM Providers
+
+Paperclip supports multiple LLM providers per agent. Each agent can use a different provider:
+
+| Provider | Type | Models | Setup |
+|----------|------|--------|-------|
+| **Claude Code** | Local CLI | Claude Sonnet/Opus | `claude` CLI installed |
+| **OpenRouter** | Cloud API | 300+ models (free tier available) | `OPENROUTER_API_KEY` env var |
+| **Ollama** | Local API | Llama, DeepSeek, Qwen, Gemma, etc. | `ollama serve` running locally |
+| **Codex** | Local CLI | GPT-4o, o3, etc. | `codex` CLI installed |
+| **Gemini CLI** | Local CLI | Gemini Pro/Flash | `gemini` CLI installed |
+
+### Quick setup
+
+**OpenRouter** (300+ cloud models, free tier):
+```bash
+# Set your API key
+export OPENROUTER_API_KEY=sk-or-v1-...
+
+# Or set it in .env
+echo 'OPENROUTER_API_KEY=sk-or-v1-...' >> .env
+```
+Then select "OpenRouter" when creating an agent. Free models like `deepseek/deepseek-r1:free` require no payment.
+
+**Ollama** (fully local, free, private):
+```bash
+# Install Ollama from https://ollama.com
+# Pull a model
+ollama pull llama3.3
+
+# Start the server
+ollama serve
+```
+Then select "Ollama" when creating an agent. Your data never leaves your machine.
+
+### Default provider
+
+Set `LLM_PROVIDER` in your `.env` to change the default adapter for new agents:
+```bash
+LLM_PROVIDER=openrouter   # or: ollama, anthropic, codex, gemini
+```
 
 ## Paperclip is right for you if
 
@@ -231,6 +275,17 @@ pnpm db:migrate       # Apply migrations
 ```
 
 See [doc/DEVELOPING.md](doc/DEVELOPING.md) for the full development guide.
+
+<br/>
+
+## Recent Updates
+
+- **Database Stability**: Resolved Windows-specific shared memory locks during embedded PGlite initialization to ensure reliable preflight migrations and local dev startup.
+- **OpenRouter Enhancements**:
+  - Updated default model to `google/gemini-2.5-flash` for high reliability and cost-effectiveness.
+  - Implemented 429 rate-limiting exponential backoff (retries) and fixed request abortion timeout edge cases.
+- **CEO Agent Provisioning**: Updated "Hire Agent" skills and UI Defaults to ensure the CEO provisions new engineers dynamically using the OpenRouter infrastructure.
+- **Company Management**: Added robust cascading deletes for companies across the database to enable clean UI deletion without foreign key constraint errors.
 
 <br/>
 

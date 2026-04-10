@@ -9,6 +9,8 @@ import { piLocalUIAdapter } from "./pi-local";
 import { openClawGatewayUIAdapter } from "./openclaw-gateway";
 import { processUIAdapter } from "./process";
 import { httpUIAdapter } from "./http";
+import { openrouterUIAdapter } from "./openrouter";
+import { ollamaUIAdapter } from "./ollama";
 
 const uiAdapters: UIAdapterModule[] = [
   claudeLocalUIAdapter,
@@ -19,6 +21,8 @@ const uiAdapters: UIAdapterModule[] = [
   piLocalUIAdapter,
   cursorLocalUIAdapter,
   openClawGatewayUIAdapter,
+  openrouterUIAdapter,
+  ollamaUIAdapter,
   processUIAdapter,
   httpUIAdapter,
 ];

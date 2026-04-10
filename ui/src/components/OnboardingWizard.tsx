@@ -54,7 +54,9 @@ import {
   Check,
   Loader2,
   ChevronDown,
-  X
+  X,
+  Cloud,
+  Wifi
 } from "lucide-react";
 import { HermesIcon } from "./HermesIcon";
 
@@ -853,6 +855,18 @@ export function OnboardingWizard() {
                             label: "Hermes Agent",
                             icon: HermesIcon,
                             desc: "Local multi-provider agent"
+                          },
+                          {
+                            value: "openrouter" as const,
+                            label: "OpenRouter",
+                            icon: Cloud,
+                            desc: "Cloud multi-provider agent"
+                          },
+                          {
+                            value: "ollama" as const,
+                            label: "Ollama",
+                            icon: Wifi,
+                            desc: "Local Ollama agent"
                           },
                           {
                             value: "openclaw_gateway" as const,
