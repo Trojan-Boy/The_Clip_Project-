@@ -207,7 +207,7 @@ const openrouterAdapter: ServerAdapterModule = {
   testEnvironment: openrouterTestEnvironment,
   sessionCodec: openrouterSessionCodec,
   models: openrouterModels,
-  supportsLocalAgentJwt: false,
+  supportsLocalAgentJwt: true,
   agentConfigurationDoc: openrouterAgentConfigurationDoc,
 };
 
@@ -218,7 +218,7 @@ const ollamaAdapter: ServerAdapterModule = {
   sessionCodec: ollamaSessionCodec,
   models: ollamaModels,
   listModels: listOllamaModels,
-  supportsLocalAgentJwt: false,
+  supportsLocalAgentJwt: true,
   agentConfigurationDoc: ollamaAgentConfigurationDoc,
 };
 

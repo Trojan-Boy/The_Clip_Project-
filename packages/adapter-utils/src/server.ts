@@ -7,3 +7,4 @@
 export * from "./paperclip-tools.js";
 export * from "./tool-executor.js";
 export * from "./agentic-loop.js";
+export * from "./context-enrichment.js";

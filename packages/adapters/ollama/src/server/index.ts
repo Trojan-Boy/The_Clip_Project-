@@ -5,7 +5,7 @@ import type {
   AdapterEnvironmentTestResult,
   AdapterSessionCodec,
 } from "@paperclipai/adapter-utils";
-import { runAgenticLoop, type ChatMessage } from "@paperclipai/adapter-utils/server";
+import { runAgenticLoop, buildEnrichedContext, type ChatMessage } from "@paperclipai/adapter-utils/server";
 import { DEFAULT_OLLAMA_MODEL, DEFAULT_OLLAMA_BASE_URL } from "../index.js";
 
 function readNonEmptyString(value: unknown): string | null {
@@ -73,10 +73,27 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
 
   const systemPrompt = asString(config.systemPrompt, "");
 
+  // Fetch issue and agent context from Paperclip API
+  const enrichedContext = await buildEnrichedContext(
+    context as Record<string, unknown> | undefined,
+    {
+      authToken: authToken ?? "",
+      apiBaseUrl,
+      agentId: agent.id,
+      companyId: agent.companyId,
+      cwd,
+      onLog,
+    },
+  );
+
   // Build initial messages
   const initialMessages: ChatMessage[] = [];
-  if (systemPrompt) {
-    initialMessages.push({ role: "system", content: systemPrompt });
+  const fullSystemPrompt = [
+    systemPrompt,
+    enrichedContext,
+  ].filter(Boolean).join("\n\n");
+  if (fullSystemPrompt) {
+    initialMessages.push({ role: "system", content: fullSystemPrompt });
   }
   initialMessages.push({ role: "user", content: renderedPrompt });
 
