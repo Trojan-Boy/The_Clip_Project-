@@ -4,9 +4,11 @@ import { createGoalSchema, updateGoalSchema } from "@paperclipai/shared";
 import { validate } from "../middleware/validate.js";
 import { goalService, logActivity } from "../services/index.js";
 import { assertCompanyAccess, getActorInfo } from "./authz.js";
+import { installCompanyIdParamNormalizer } from "./company-ref.js";
 
 export function goalRoutes(db: Db) {
   const router = Router();
+  installCompanyIdParamNormalizer(router, db);
   const svc = goalService(db);
 
   router.get("/companies/:companyId/goals", async (req, res) => {

@@ -10,9 +10,11 @@ import {
 import { validate } from "../middleware/validate.js";
 import { assertBoard, assertCompanyAccess } from "./authz.js";
 import { logActivity, secretService } from "../services/index.js";
+import { installCompanyIdParamNormalizer } from "./company-ref.js";
 
 export function secretRoutes(db: Db) {
   const router = Router();
+  installCompanyIdParamNormalizer(router, db);
   const svc = secretService(db);
   const configuredDefaultProvider = process.env.PAPERCLIP_SECRETS_PROVIDER;
   const defaultProvider = (

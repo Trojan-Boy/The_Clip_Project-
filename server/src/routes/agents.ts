@@ -43,6 +43,7 @@ import {
   syncInstructionsBundleConfigFromFilePath,
   workspaceOperationService,
 } from "../services/index.js";
+import { activityService } from "../services/activity.js";
 import { conflict, forbidden, notFound, unprocessable } from "../errors.js";
 import { assertBoard, assertCompanyAccess, assertInstanceAdmin, getActorInfo } from "./authz.js";
 import { findServerAdapter, listAdapterModels, detectAdapterModel } from "../adapters/index.js";
@@ -50,6 +51,7 @@ import { redactEventPayload } from "../redaction.js";
 import { redactCurrentUserValue } from "../log-redaction.js";
 import { renderOrgChartSvg, renderOrgChartPng, type OrgNode, type OrgChartStyle, ORG_CHART_STYLES } from "./org-chart-svg.js";
 import { instanceSettingsService } from "../services/instance-settings.js";
+import { installCompanyIdParamNormalizer } from "./company-ref.js";
 import { runClaudeLogin } from "@paperclipai/adapter-claude-local/server";
 import {
   DEFAULT_CODEX_LOCAL_BYPASS_APPROVALS_AND_SANDBOX,
@@ -64,6 +66,7 @@ import {
 } from "../services/default-agent-instructions.js";
 
 export function agentRoutes(db: Db) {
+  const DEFAULT_NEW_AGENT_DESIRED_SKILLS = ["para-memory-files"] as const;
   const DEFAULT_INSTRUCTIONS_PATH_KEYS: Record<string, string> = {
     claude_local: "instructionsFilePath",
     codex_local: "instructionsFilePath",
@@ -71,6 +74,7 @@ export function agentRoutes(db: Db) {
     opencode_local: "instructionsFilePath",
     cursor: "instructionsFilePath",
     pi_local: "instructionsFilePath",
+    hermes_local: "instructionsFilePath",
   };
   const DEFAULT_MANAGED_INSTRUCTIONS_ADAPTER_TYPES = new Set(Object.keys(DEFAULT_INSTRUCTIONS_PATH_KEYS));
   const KNOWN_INSTRUCTIONS_PATH_KEYS = new Set(["instructionsFilePath", "agentsMdPath"]);
@@ -83,6 +87,7 @@ export function agentRoutes(db: Db) {
   ] as const;
 
   const router = Router();
+  installCompanyIdParamNormalizer(router, db);
   const svc = agentService(db);
   const access = accessService(db);
   const approvalsSvc = approvalService(db);
@@ -93,6 +98,7 @@ export function agentRoutes(db: Db) {
   const instructions = agentInstructionsService();
   const companySkills = companySkillService(db);
   const workspaceOperations = workspaceOperationService(db);
+  const activity = activityService(db);
   const instanceSettings = instanceSettingsService(db);
   const strictSecretsMode = process.env.PAPERCLIP_SECRETS_STRICT_MODE === "true";
 
@@ -260,8 +266,10 @@ export function agentRoutes(db: Db) {
         ? companyIdQuery.trim()
         : null;
     if (requestedCompanyId) {
-      assertCompanyAccess(req, requestedCompanyId);
-      return requestedCompanyId;
+      const normalized = await resolveCompanyIdReference(requestedCompanyId);
+      if (!normalized) return null;
+      assertCompanyAccess(req, normalized);
+      return normalized;
     }
     if (req.actor.type === "agent" && req.actor.companyId) {
       return req.actor.companyId;
@@ -298,6 +306,21 @@ export function agentRoutes(db: Db) {
       values.push(input.sourceIssueId);
     }
     return Array.from(new Set(values));
+  }
+
+  async function resolveCompanyIdReference(companyRef: string): Promise<string | null> {
+    const raw = companyRef.trim();
+    if (!raw) return null;
+    if (isUuidLike(raw)) return raw;
+    if (!/^[a-z][a-z0-9]{1,9}$/i.test(raw)) return raw;
+
+    const match = await db
+      .select({ id: companies.id })
+      .from(companies)
+      .where(sql`lower(${companies.issuePrefix}) = ${raw.toLowerCase()}`)
+      .limit(1)
+      .then((rows) => rows[0] ?? null);
+    return match?.id ?? null;
   }
 
   function asRecord(value: unknown): Record<string, unknown> | null {
@@ -651,6 +674,11 @@ export function agentRoutes(db: Db) {
       name: String(node.name),
       role: String(node.role),
       status: String(node.status),
+      title: typeof node.title === "string" ? node.title : null,
+      capabilities: typeof node.capabilities === "string" ? node.capabilities : null,
+      icon: typeof node.icon === "string" ? node.icon : null,
+      reportsTo: typeof node.reportsTo === "string" ? node.reportsTo : null,
+      adapterType: typeof node.adapterType === "string" ? node.adapterType : null,
       reports,
     };
   }
@@ -928,15 +956,51 @@ export function agentRoutes(db: Db) {
   });
 
   router.get("/companies/:companyId/org", async (req, res) => {
-    const companyId = req.params.companyId as string;
+    const companyRef = req.params.companyId as string;
+    const companyId = await resolveCompanyIdReference(companyRef);
+    if (!companyId) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
     assertCompanyAccess(req, companyId);
+    const includeToolsQuery = req.query.includeTools;
+    const includeToolsRaw = Array.isArray(includeToolsQuery) ? includeToolsQuery[0] : includeToolsQuery;
+    const includeTools = typeof includeToolsRaw === "string"
+      ? ["1", "true", "yes", "on"].includes(includeToolsRaw.toLowerCase())
+      : false;
     const tree = await svc.orgForCompany(companyId);
     const leanTree = tree.map((node) => toLeanOrgNode(node as Record<string, unknown>));
-    res.json(leanTree);
+
+    if (!includeTools) {
+      res.json(leanTree);
+      return;
+    }
+
+    let toolsByAgentId: Record<string, string[]> = {};
+    try {
+      toolsByAgentId = await activity.toolUsageSummary(companyId, { limitPerAgent: 3, lookbackDays: 14 });
+    } catch (error) {
+      // Keep org chart available even if tool analytics query fails.
+      // eslint-disable-next-line no-console
+      console.warn("org includeTools fallback: tool usage summary unavailable", error);
+    }
+    const attachTools = (nodes: any[]): any[] =>
+      nodes.map((n) => ({
+        ...n,
+        toolsUsed: Array.isArray(toolsByAgentId[String(n.id)]) ? toolsByAgentId[String(n.id)] : [],
+        reports: attachTools(Array.isArray(n.reports) ? n.reports : []),
+      }));
+
+    res.json(attachTools(leanTree));
   });
 
   router.get("/companies/:companyId/org.svg", async (req, res) => {
-    const companyId = req.params.companyId as string;
+    const companyRef = req.params.companyId as string;
+    const companyId = await resolveCompanyIdReference(companyRef);
+    if (!companyId) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
     assertCompanyAccess(req, companyId);
     const style = (ORG_CHART_STYLES.includes(req.query.style as OrgChartStyle) ? req.query.style : "warmth") as OrgChartStyle;
     const tree = await svc.orgForCompany(companyId);
@@ -948,7 +1012,12 @@ export function agentRoutes(db: Db) {
   });
 
   router.get("/companies/:companyId/org.png", async (req, res) => {
-    const companyId = req.params.companyId as string;
+    const companyRef = req.params.companyId as string;
+    const companyId = await resolveCompanyIdReference(companyRef);
+    if (!companyId) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
     assertCompanyAccess(req, companyId);
     const style = (ORG_CHART_STYLES.includes(req.query.style as OrgChartStyle) ? req.query.style : "warmth") as OrgChartStyle;
     const tree = await svc.orgForCompany(companyId);
@@ -1193,12 +1262,21 @@ export function agentRoutes(db: Db) {
       hireInput.adapterType,
       ((hireInput.adapterConfig ?? {}) as Record<string, unknown>),
     );
+    const resolvedDesiredSkillsInput =
+      Array.isArray(requestedDesiredSkills) && requestedDesiredSkills.length > 0
+        ? requestedDesiredSkills
+        : [...DEFAULT_NEW_AGENT_DESIRED_SKILLS];
     const desiredSkillAssignment = await resolveDesiredSkillAssignment(
       companyId,
       hireInput.adapterType,
       requestedAdapterConfig,
-      Array.isArray(requestedDesiredSkills) ? requestedDesiredSkills : undefined,
-    );
+      resolvedDesiredSkillsInput,
+    ).catch(async () => resolveDesiredSkillAssignment(
+      companyId,
+      hireInput.adapterType,
+      requestedAdapterConfig,
+      undefined,
+    ));
     const normalizedAdapterConfig = await secretsSvc.normalizeAdapterConfigForPersistence(
       companyId,
       desiredSkillAssignment.adapterConfig,
@@ -1353,12 +1431,21 @@ export function agentRoutes(db: Db) {
       createInput.adapterType,
       ((createInput.adapterConfig ?? {}) as Record<string, unknown>),
     );
+    const resolvedDesiredSkillsInput =
+      Array.isArray(requestedDesiredSkills) && requestedDesiredSkills.length > 0
+        ? requestedDesiredSkills
+        : [...DEFAULT_NEW_AGENT_DESIRED_SKILLS];
     const desiredSkillAssignment = await resolveDesiredSkillAssignment(
       companyId,
       createInput.adapterType,
       requestedAdapterConfig,
-      Array.isArray(requestedDesiredSkills) ? requestedDesiredSkills : undefined,
-    );
+      resolvedDesiredSkillsInput,
+    ).catch(async () => resolveDesiredSkillAssignment(
+      companyId,
+      createInput.adapterType,
+      requestedAdapterConfig,
+      undefined,
+    ));
     const normalizedAdapterConfig = await secretsSvc.normalizeAdapterConfigForPersistence(
       companyId,
       desiredSkillAssignment.adapterConfig,

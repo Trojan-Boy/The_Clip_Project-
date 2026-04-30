@@ -2,6 +2,8 @@ import { Router, type Request, type Response } from "express";
 import multer from "multer";
 import { z } from "zod";
 import type { Db } from "@paperclipai/db";
+import { agents as agentsTable, companies as companiesTable, issues as issuesTable } from "@paperclipai/db";
+import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import {
   addIssueCommentSchema,
   createIssueAttachmentMetadataSchema,
@@ -33,13 +35,15 @@ import {
   workProductService,
 } from "../services/index.js";
 import { logger } from "../middleware/logger.js";
-import { forbidden, HttpError, unauthorized } from "../errors.js";
+import { forbidden, HttpError, notFound, unauthorized } from "../errors.js";
 import { assertCompanyAccess, getActorInfo } from "./authz.js";
 import { shouldWakeAssigneeOnCheckout } from "./issues-checkout-wakeup.js";
 import { isAllowedContentType, MAX_ATTACHMENT_BYTES } from "../attachment-types.js";
 import { queueIssueAssignmentWakeup } from "../services/issue-assignment-wakeup.js";
 
 const MAX_ISSUE_COMMENT_LIMIT = 500;
+const PENDING_AUTO_ASSIGN_STATUSES = new Set(["todo", "in_progress", "in_review", "blocked"]);
+const PLANNING_KEYWORDS = ["plan", "planning", "strategy", "roadmap", "requirement", "timeline"];
 const updateIssueRouteSchema = updateIssueSchema.extend({
   interrupt: z.boolean().optional(),
 });
@@ -61,6 +65,214 @@ export function issueRoutes(db: Db, storage: StorageService) {
     storage: multer.memoryStorage(),
     limits: { fileSize: MAX_ATTACHMENT_BYTES, files: 1 },
   });
+
+  function isPendingAutoAssignableStatus(status: string | null | undefined) {
+    return typeof status === "string" && PENDING_AUTO_ASSIGN_STATUSES.has(status);
+  }
+
+  function isPlanningIssue(issue: { title: string; description: string | null }) {
+    const haystack = `${issue.title} ${issue.description ?? ""}`.toLowerCase();
+    return PLANNING_KEYWORDS.some((keyword) => haystack.includes(keyword));
+  }
+
+  function rolePriority(role: string | null | undefined) {
+    const normalized = (role ?? "").toLowerCase();
+    const priorities: Record<string, number> = {
+      engineer: 0,
+      designer: 1,
+      qa: 2,
+      devops: 3,
+      researcher: 4,
+      general: 5,
+      pm: 6,
+      cto: 7,
+      cfo: 8,
+      cmo: 9,
+      ceo: 10,
+    };
+    return priorities[normalized] ?? 50;
+  }
+
+  async function isHigherUpAgentForSubject(
+    companyId: string,
+    actorAgentId: string,
+    subjectAgentId: string | null | undefined,
+  ) {
+    if (!subjectAgentId || subjectAgentId === actorAgentId) return false;
+    const actor = await agentsSvc.getById(actorAgentId);
+    if (!actor || actor.companyId !== companyId) return false;
+    if (actor.role === "ceo") return true;
+    const chain = await agentsSvc.getChainOfCommand(subjectAgentId);
+    return chain.some((entry) => entry.id === actorAgentId);
+  }
+
+  async function assertPlanningPruneGovernance(
+    req: Request,
+    issue: {
+      id: string;
+      companyId: string;
+      title: string;
+      description: string | null;
+      assigneeAgentId: string | null;
+      createdByAgentId: string | null;
+    },
+    opts?: { requireCommentBody?: string | null },
+  ) {
+    if (!isPlanningIssue(issue)) return;
+    if (req.actor.type === "board") return;
+
+    if (req.actor.type !== "agent" || !req.actor.agentId) {
+      throw forbidden("Planning-task changes require higher-up approval");
+    }
+
+    const actorAgent = await agentsSvc.getById(req.actor.agentId);
+    if (!actorAgent || actorAgent.companyId !== issue.companyId) {
+      throw forbidden("Planning-task changes require higher-up approval");
+    }
+
+    const hasLeadershipPermission = actorAgent.role === "ceo" || Boolean(actorAgent.permissions?.canCreateAgents);
+    const higherUpOverAssignee = await isHigherUpAgentForSubject(
+      issue.companyId,
+      req.actor.agentId,
+      issue.assigneeAgentId,
+    );
+    const higherUpOverCreator = await isHigherUpAgentForSubject(
+      issue.companyId,
+      req.actor.agentId,
+      issue.createdByAgentId,
+    );
+
+    if (!hasLeadershipPermission && !higherUpOverAssignee && !higherUpOverCreator) {
+      throw forbidden("Planning-task changes require approval from a higher-up in the hierarchy");
+    }
+
+    if (opts?.requireCommentBody !== undefined) {
+      const commentBody = (opts.requireCommentBody ?? "").trim();
+      if (commentBody.length === 0) {
+        throw forbidden("Provide a reason comment when cancelling planning tasks");
+      }
+    }
+  }
+
+  async function pickAutoAssignee(companyId: string, preferredManagerId?: string | null) {
+    const candidates = await db
+      .select({
+        id: agentsTable.id,
+        role: agentsTable.role,
+        status: agentsTable.status,
+        reportsTo: agentsTable.reportsTo,
+      })
+      .from(agentsTable)
+      .where(
+        and(
+          eq(agentsTable.companyId, companyId),
+          ne(agentsTable.status, "terminated"),
+          ne(agentsTable.status, "paused"),
+          ne(agentsTable.status, "pending_approval"),
+        ),
+      );
+
+    if (candidates.length === 0) return null;
+    const candidateIds = candidates.map((candidate) => candidate.id);
+    const openStatuses = Array.from(PENDING_AUTO_ASSIGN_STATUSES);
+    const loadRows = await db
+      .select({
+        assigneeAgentId: issuesTable.assigneeAgentId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(issuesTable)
+      .where(
+        and(
+          eq(issuesTable.companyId, companyId),
+          inArray(issuesTable.assigneeAgentId, candidateIds),
+          inArray(issuesTable.status, openStatuses),
+          isNull(issuesTable.hiddenAt),
+        ),
+      )
+      .groupBy(issuesTable.assigneeAgentId);
+
+    const openLoadByAgentId = new Map<string, number>();
+    for (const row of loadRows) {
+      if (row.assigneeAgentId) {
+        openLoadByAgentId.set(row.assigneeAgentId, Number(row.count ?? 0));
+      }
+    }
+
+    const ranked = [...candidates].sort((left, right) => {
+      const leftPreferred = preferredManagerId && left.reportsTo === preferredManagerId ? 0 : 1;
+      const rightPreferred = preferredManagerId && right.reportsTo === preferredManagerId ? 0 : 1;
+      if (leftPreferred !== rightPreferred) return leftPreferred - rightPreferred;
+
+      const leftWorker = left.reportsTo ? 0 : 1;
+      const rightWorker = right.reportsTo ? 0 : 1;
+      if (leftWorker !== rightWorker) return leftWorker - rightWorker;
+
+      const leftLoad = openLoadByAgentId.get(left.id) ?? 0;
+      const rightLoad = openLoadByAgentId.get(right.id) ?? 0;
+      if (leftLoad !== rightLoad) return leftLoad - rightLoad;
+
+      const byRole = rolePriority(left.role) - rolePriority(right.role);
+      if (byRole !== 0) return byRole;
+      return left.id.localeCompare(right.id);
+    });
+
+    return ranked[0]?.id ?? null;
+  }
+
+  async function maybeAutoAssignPendingIssue<
+    TIssue extends {
+      id: string;
+      companyId: string;
+      status: string;
+      assigneeAgentId: string | null;
+      assigneeUserId: string | null;
+      createdByAgentId: string | null;
+      identifier: string | null;
+      title: string;
+    },
+  >(
+    issue: TIssue,
+    actor: ReturnType<typeof getActorInfo>,
+    source: "create" | "update" | "comment" | "rebalance",
+  ): Promise<TIssue> {
+    if (!isPendingAutoAssignableStatus(issue.status)) return issue;
+    if (issue.assigneeAgentId || issue.assigneeUserId) return issue;
+
+    const assigneeAgentId = await pickAutoAssignee(issue.companyId, issue.createdByAgentId);
+    if (!assigneeAgentId) return issue;
+
+    const updated = await svc.update(issue.id, { assigneeAgentId });
+    if (!updated) return issue;
+
+    await logActivity(db, {
+      companyId: updated.companyId,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
+      agentId: actor.agentId,
+      runId: actor.runId,
+      action: "issue.auto_assigned",
+      entityType: "issue",
+      entityId: updated.id,
+      details: {
+        source,
+        assigneeAgentId,
+        identifier: updated.identifier,
+        title: updated.title,
+      },
+    });
+
+    void queueIssueAssignmentWakeup({
+      heartbeat,
+      issue: updated,
+      reason: "issue_auto_assigned",
+      mutation: source,
+      contextSource: `issue.${source}.auto_assign`,
+      requestedByActorType: actor.actorType,
+      requestedByActorId: actor.actorId,
+    });
+
+    return updated as unknown as TIssue;
+  }
 
   function withContentPath<T extends { id: string }>(attachment: T) {
     return {
@@ -200,6 +412,24 @@ export function issueRoutes(db: Db, storage: StorageService) {
     return rawId;
   }
 
+  async function normalizeCompanyReference(rawCompanyId: string): Promise<string> {
+    const normalized = rawCompanyId.trim();
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(normalized)) {
+      return normalized;
+    }
+    if (!/^[a-z][a-z0-9]{1,9}$/i.test(normalized)) {
+      return normalized;
+    }
+    const company = await db
+      .select({ id: companiesTable.id })
+      .from(companiesTable)
+      .where(sql`lower(${companiesTable.issuePrefix}) = ${normalized.toLowerCase()}`)
+      .limit(1)
+      .then((rows) => rows[0] ?? null);
+    if (!company) throw notFound("Company not found");
+    return company.id;
+  }
+
   async function resolveIssueProjectAndGoal(issue: {
     companyId: string;
     projectId: string | null;
@@ -241,6 +471,16 @@ export function issueRoutes(db: Db, storage: StorageService) {
   router.param("issueId", async (req, res, next, rawId) => {
     try {
       req.params.issueId = await normalizeIssueIdentifier(rawId);
+      next();
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Resolve company refs (UUID or company issue-prefix like "POL") for company-scoped issue routes.
+  router.param("companyId", async (req, res, next, rawCompanyId) => {
+    try {
+      req.params.companyId = await normalizeCompanyReference(rawCompanyId);
       next();
     } catch (err) {
       next(err);
@@ -314,6 +554,107 @@ export function issueRoutes(db: Db, storage: StorageService) {
       q: req.query.q as string | undefined,
     });
     res.json(result);
+  });
+
+  router.post("/companies/:companyId/issues/rebalance-pending", async (req, res) => {
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    await assertCanAssignTasks(req, companyId);
+
+    const actor = getActorInfo(req);
+    const openStatuses = Array.from(PENDING_AUTO_ASSIGN_STATUSES);
+    const pendingIssues = await db
+      .select()
+      .from(issuesTable)
+      .where(
+        and(
+          eq(issuesTable.companyId, companyId),
+          inArray(issuesTable.status, openStatuses),
+          isNull(issuesTable.hiddenAt),
+        ),
+      );
+
+    let autoAssigned = 0;
+    let alreadyAssigned = 0;
+    let wokenAssignees = 0;
+    let busyAssignees = 0;
+    let skippedWakeups = 0;
+    const wakeQueuedForAgentIds = new Set<string>();
+
+    for (const pendingIssue of pendingIssues) {
+      let updated = pendingIssue;
+      if (!pendingIssue.assigneeAgentId && !pendingIssue.assigneeUserId) {
+        updated = await maybeAutoAssignPendingIssue(pendingIssue, actor, "rebalance");
+      } else {
+        alreadyAssigned += 1;
+      }
+
+      if (
+        !pendingIssue.assigneeAgentId &&
+        !pendingIssue.assigneeUserId &&
+        !!updated.assigneeAgentId
+      ) {
+        autoAssigned += 1;
+      }
+
+      if (!updated.assigneeAgentId || updated.status === "backlog") continue;
+      if (wakeQueuedForAgentIds.has(updated.assigneeAgentId)) {
+        skippedWakeups += 1;
+        continue;
+      }
+
+      const activeRun = await heartbeat.getActiveRunForAgent(updated.assigneeAgentId);
+      if (activeRun) {
+        busyAssignees += 1;
+        continue;
+      }
+
+      const wakeup = await queueIssueAssignmentWakeup({
+        heartbeat,
+        issue: updated,
+        reason: "pending_issue_rebalanced",
+        mutation: "rebalance",
+        contextSource: "issue.rebalance_pending",
+        requestedByActorType: actor.actorType,
+        requestedByActorId: actor.actorId,
+        rethrowOnError: true,
+      });
+      wakeQueuedForAgentIds.add(updated.assigneeAgentId);
+      if (wakeup) {
+        wokenAssignees += 1;
+      } else {
+        skippedWakeups += 1;
+      }
+    }
+
+    await logActivity(db, {
+      companyId,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
+      agentId: actor.agentId,
+      runId: actor.runId,
+      action: "issue.rebalanced_pending",
+      entityType: "company",
+      entityId: companyId,
+      details: {
+        scanned: pendingIssues.length,
+        autoAssigned,
+        alreadyAssigned,
+        wokenAssignees,
+        busyAssignees,
+        skippedWakeups,
+      },
+    });
+
+    res.json({
+      scanned: pendingIssues.length,
+      autoAssigned,
+      alreadyAssigned,
+      wokenAssignees,
+      busyAssignees,
+      skippedWakeups,
+      unassigned: pendingIssues.filter((issue) => !issue.assigneeAgentId && !issue.assigneeUserId).length - autoAssigned,
+    });
   });
 
   router.get("/companies/:companyId/labels", async (req, res) => {
@@ -987,17 +1328,20 @@ export function issueRoutes(db: Db, storage: StorageService) {
       details: { title: issue.title, identifier: issue.identifier },
     });
 
-    void queueIssueAssignmentWakeup({
-      heartbeat,
-      issue,
-      reason: "issue_assigned",
-      mutation: "create",
-      contextSource: "issue.create",
-      requestedByActorType: actor.actorType,
-      requestedByActorId: actor.actorId,
-    });
+    if (issue.assigneeAgentId || issue.assigneeUserId) {
+      void queueIssueAssignmentWakeup({
+        heartbeat,
+        issue,
+        reason: "issue_assigned",
+        mutation: "create",
+        contextSource: "issue.create",
+        requestedByActorType: actor.actorType,
+        requestedByActorId: actor.actorId,
+      });
+    }
 
-    res.status(201).json(issue);
+    const withAutoAssignee = await maybeAutoAssignPendingIssue(issue, actor, "create");
+    res.status(201).json(withAutoAssignee);
   });
 
   router.patch("/issues/:id", validate(updateIssueRouteSchema), async (req, res) => {
@@ -1038,6 +1382,14 @@ export function issueRoutes(db: Db, storage: StorageService) {
       ...updateFields
     } = req.body;
     let interruptedRunId: string | null = null;
+    const cancellingPlanningIssue =
+      req.body.status === "cancelled" && existing.status !== "cancelled";
+
+    if (cancellingPlanningIssue) {
+      await assertPlanningPruneGovernance(req, existing, {
+        requireCommentBody: commentBody ?? null,
+      });
+    }
 
     if (interruptRequested) {
       if (!commentBody) {
@@ -1106,6 +1458,12 @@ export function issueRoutes(db: Db, storage: StorageService) {
       res.status(404).json({ error: "Issue not found" });
       return;
     }
+    const issueBeforeAutoAssign = issue;
+    issue = await maybeAutoAssignPendingIssue(issue, actor, "update");
+    const autoAssignedOnUpdate =
+      issueBeforeAutoAssign.assigneeAgentId !== issue.assigneeAgentId ||
+      issueBeforeAutoAssign.assigneeUserId !== issue.assigneeUserId;
+
     await routinesSvc.syncRunStatusForIssue(issue.id);
 
     if (actor.runId) {
@@ -1207,7 +1565,7 @@ export function issueRoutes(db: Db, storage: StorageService) {
         });
       }
 
-      if (!assigneeChanged && statusChangedFromBacklog && issue.assigneeAgentId) {
+      if (!assigneeChanged && !autoAssignedOnUpdate && statusChangedFromBacklog && issue.assigneeAgentId) {
         wakeups.set(issue.assigneeAgentId, {
           source: "automation",
           triggerDetail: "system",
@@ -1275,6 +1633,7 @@ export function issueRoutes(db: Db, storage: StorageService) {
       return;
     }
     assertCompanyAccess(req, existing.companyId);
+    await assertPlanningPruneGovernance(req, existing);
     const attachments = await svc.listAttachments(id);
 
     const issue = await svc.remove(id);
@@ -1480,6 +1839,7 @@ export function issueRoutes(db: Db, storage: StorageService) {
     let reopenFromStatus: string | null = null;
     let interruptedRunId: string | null = null;
     let currentIssue = issue;
+    let reopenedAutoAssigned = false;
 
     if (reopenRequested && isClosed) {
       const reopenedIssue = await svc.update(id, { status: "todo" });
@@ -1489,7 +1849,10 @@ export function issueRoutes(db: Db, storage: StorageService) {
       }
       reopened = true;
       reopenFromStatus = issue.status;
-      currentIssue = reopenedIssue;
+      currentIssue = await maybeAutoAssignPendingIssue(reopenedIssue, actor, "comment");
+      reopenedAutoAssigned =
+        reopenedIssue.assigneeAgentId !== currentIssue.assigneeAgentId ||
+        reopenedIssue.assigneeUserId !== currentIssue.assigneeUserId;
 
       await logActivity(db, {
         companyId: currentIssue.companyId,
@@ -1573,7 +1936,7 @@ export function issueRoutes(db: Db, storage: StorageService) {
       const selfComment = actorIsAgent && actor.actorId === assigneeId;
       const skipWake = selfComment || isClosed;
       if (assigneeId && (reopened || !skipWake)) {
-        if (reopened) {
+        if (reopened && !reopenedAutoAssigned) {
           wakeups.set(assigneeId, {
             source: "automation",
             triggerDetail: "system",
@@ -1597,7 +1960,7 @@ export function issueRoutes(db: Db, storage: StorageService) {
               ...(interruptedRunId ? { interruptedRunId } : {}),
             },
           });
-        } else {
+        } else if (!reopened) {
           wakeups.set(assigneeId, {
             source: "automation",
             triggerDetail: "system",
@@ -1822,6 +2185,96 @@ export function issueRoutes(db: Db, storage: StorageService) {
     });
 
     res.json({ ok: true });
+  });
+
+  // Clarification request endpoint - allows agents to ask questions before proceeding
+  router.post("/issues/:id/clarification", async (req, res) => {
+    const id = req.params.id as string;
+    const issue = await svc.getById(id);
+    if (!issue) {
+      res.status(404).json({ error: "Issue not found" });
+      return;
+    }
+    assertCompanyAccess(req, issue.companyId);
+    if (!(await assertAgentRunCheckoutOwnership(req, res, issue))) return;
+
+    const { questions, blocking = true, assumptions } = req.body as {
+      questions: string[];
+      blocking?: boolean;
+      assumptions?: string;
+    };
+
+    if (!Array.isArray(questions) || questions.length === 0) {
+      res.status(400).json({ error: "questions array is required" });
+      return;
+    }
+
+    // Build the clarification comment
+    let commentBody = "## ❓ Clarification Needed\n\n";
+    commentBody += "I need more information before I can proceed:\n\n";
+    questions.forEach((q, i) => {
+      commentBody += `${i + 1}. ${q}\n`;
+    });
+
+    if (assumptions) {
+      commentBody += `\n**My assumptions if no clarification provided:**\n${assumptions}\n`;
+    }
+
+    const actor = getActorInfo(req);
+    const comment = await svc.addComment(id, commentBody, {
+      agentId: actor.agentId ?? undefined,
+      userId: actor.actorType === "user" ? actor.actorId : undefined,
+    });
+
+    // Optionally mark as blocked
+    let updatedIssue = issue;
+    if (blocking && issue.status !== "blocked") {
+      updatedIssue = await svc.update(id, { status: "blocked" }) ?? issue;
+    }
+
+    // Log the activity
+    await logActivity(db, {
+      companyId: issue.companyId,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
+      agentId: actor.agentId,
+      runId: actor.runId,
+      action: "issue.clarification_requested",
+      entityType: "issue",
+      entityId: issue.id,
+      details: {
+        commentId: comment.id,
+        questionCount: questions.length,
+        blocking,
+        identifier: issue.identifier,
+      },
+    });
+
+    // Wake the creator/assigner to respond
+    const targetAgentId = issue.createdByAgentId ?? issue.assigneeAgentId;
+    if (targetAgentId && targetAgentId !== actor.agentId) {
+      void heartbeat
+        .wakeup(targetAgentId, {
+          source: "automation",
+          triggerDetail: "system",
+          reason: "clarification_requested",
+          payload: {
+            issueId: issue.id,
+            commentId: comment.id,
+            requestingAgentId: actor.agentId,
+          },
+          requestedByActorType: actor.actorType,
+          requestedByActorId: actor.actorId,
+          contextSnapshot: {
+            issueId: issue.id,
+            source: "issue.clarification",
+            wakeReason: "clarification_requested",
+          },
+        })
+        .catch((err) => logger.warn({ err, issueId: issue.id }, "failed to wake agent on clarification request"));
+    }
+
+    res.status(201).json({ comment, issue: updatedIssue });
   });
 
   return router;

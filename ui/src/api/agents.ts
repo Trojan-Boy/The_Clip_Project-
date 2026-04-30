@@ -47,6 +47,12 @@ export interface OrgNode {
   name: string;
   role: string;
   status: string;
+  title?: string | null;
+  capabilities?: string | null;
+  icon?: string | null;
+  reportsTo?: string | null;
+  adapterType?: string | null;
+  toolsUsed?: string[];
   reports: OrgNode[];
 }
 
@@ -72,7 +78,17 @@ function agentPath(id: string, companyId?: string, suffix = "") {
 
 export const agentsApi = {
   list: (companyId: string) => api.get<Agent[]>(`/companies/${companyId}/agents`),
-  org: (companyId: string) => api.get<OrgNode[]>(`/companies/${companyId}/org`),
+  org: async (companyId: string) => {
+    try {
+      return await api.get<OrgNode[]>(`/companies/${companyId}/org?includeTools=true`);
+    } catch (error) {
+      // Fallback to base org tree if tool-summary enrichment fails server-side.
+      if (error instanceof ApiError && error.status >= 500) {
+        return api.get<OrgNode[]>(`/companies/${companyId}/org`);
+      }
+      throw error;
+    }
+  },
   listConfigurations: (companyId: string) =>
     api.get<Record<string, unknown>[]>(`/companies/${companyId}/agent-configurations`),
   get: async (id: string, companyId?: string) => {

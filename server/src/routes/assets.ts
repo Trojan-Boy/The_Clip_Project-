@@ -8,6 +8,7 @@ import type { StorageService } from "../storage/types.js";
 import { assetService, logActivity } from "../services/index.js";
 import { isAllowedContentType, MAX_ATTACHMENT_BYTES } from "../attachment-types.js";
 import { assertCompanyAccess, getActorInfo } from "./authz.js";
+import { installCompanyIdParamNormalizer } from "./company-ref.js";
 const SVG_CONTENT_TYPE = "image/svg+xml";
 const ALLOWED_COMPANY_LOGO_CONTENT_TYPES = new Set([
   "image/png",
@@ -84,6 +85,7 @@ function sanitizeSvgBuffer(input: Buffer): Buffer | null {
 
 export function assetRoutes(db: Db, storage: StorageService) {
   const router = Router();
+  installCompanyIdParamNormalizer(router, db);
   const svc = assetService(db);
   const assetUpload = multer({
     storage: multer.memoryStorage(),

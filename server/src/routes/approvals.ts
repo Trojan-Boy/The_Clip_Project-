@@ -18,6 +18,7 @@ import {
 } from "../services/index.js";
 import { assertBoard, assertCompanyAccess, getActorInfo } from "./authz.js";
 import { redactEventPayload } from "../redaction.js";
+import { installCompanyIdParamNormalizer } from "./company-ref.js";
 
 function redactApprovalPayload<T extends { payload: Record<string, unknown> }>(approval: T): T {
   return {
@@ -28,6 +29,7 @@ function redactApprovalPayload<T extends { payload: Record<string, unknown> }>(a
 
 export function approvalRoutes(db: Db) {
   const router = Router();
+  installCompanyIdParamNormalizer(router, db);
   const svc = approvalService(db);
   const heartbeat = heartbeatService(db);
   const issueApprovalsSvc = issueApprovalService(db);

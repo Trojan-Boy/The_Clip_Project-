@@ -20,9 +20,11 @@ import {
 } from "../services/index.js";
 import type { StorageService } from "../storage/types.js";
 import { assertBoard, assertCompanyAccess, getActorInfo } from "./authz.js";
+import { installCompanyIdParamNormalizer } from "./company-ref.js";
 
 export function companyRoutes(db: Db, storage?: StorageService) {
   const router = Router();
+  installCompanyIdParamNormalizer(router, db);
   const svc = companyService(db);
   const agents = agentService(db);
   const portability = companyPortabilityService(db, storage);

@@ -53,6 +53,7 @@ import {
   claimBoardOwnership,
   inspectBoardClaimChallenge
 } from "../board-claim.js";
+import { installCompanyIdParamNormalizer } from "./company-ref.js";
 
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
@@ -1576,6 +1577,7 @@ export function accessRoutes(
   }
 ) {
   const router = Router();
+  installCompanyIdParamNormalizer(router, db);
   const access = accessService(db);
   const boardAuth = boardAuthService(db);
   const agents = agentService(db);

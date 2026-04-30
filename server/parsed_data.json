@@ -1,0 +1,125 @@
+{
+    "ycombinator_startups": [],
+    "hackernews_articles": [
+        {
+            "title": "John Ternus to become Apple CEO",
+            "url": "https://www.apple.com/newsroom/2026/04/tim-cook-to-become-apple-executive-chairman-john-ternus-to-become-apple-ceo/"
+        },
+        {
+            "title": "How to make a fast dynamic language interpreter",
+            "url": "https://zef-lang.dev/implementation"
+        },
+        {
+            "title": "A Roblox cheat and one AI tool brought down Vercel's platform",
+            "url": "https://webmatrices.com/post/how-a-roblox-cheat-and-one-ai-tool-brought-down-vercel-s-entire-platform"
+        },
+        {
+            "title": "Anthropic says OpenClaw-style Claude CLI usage is allowed again",
+            "url": "https://docs.openclaw.ai/providers/anthropic"
+        },
+        {
+            "title": "Show HN: Mediator.ai \u2013 Using Nash bargaining and LLMs to systematize fairness",
+            "url": "https://mediator.ai/"
+        },
+        {
+            "title": "Qwen3.6-Max-Preview: Smarter, Sharper, Still Evolving",
+            "url": "https://qwen.ai/blog?id=qwen3.6-max-preview"
+        },
+        {
+            "title": "Jujutsu megamerges for fun and profit",
+            "url": "https://isaaccorbrey.com/notes/jujutsu-megamerges-for-fun-and-profit"
+        },
+        {
+            "title": "How a subsea cable is repaired",
+            "url": "https://www.onesteppower.com/post/subsea-cable-repair"
+        },
+        {
+            "title": "Kimi vendor verifier \u2013 verify accuracy of inference providers",
+            "url": "https://www.kimi.com/blog/kimi-vendor-verifier"
+        },
+        {
+            "title": "Ternary Bonsai: Top Intelligence at 1.58 Bits",
+            "url": "https://prismml.com/news/ternary-bonsai"
+        },
+        {
+            "title": "The Beauty of Bonsai Styles",
+            "url": "https://longwoodgardens.org/blog/2023-05-17/beauty-bonsai-styles"
+        },
+        {
+            "title": "Soul Player C64 \u2013 A real transformer running on a 1 MHz Commodore 64",
+            "url": "https://github.com/gizmo64k/soulplayer-c64"
+        },
+        {
+            "title": "Air Is Full of DNA",
+            "url": "https://www.nature.com/articles/d41586-026-01099-2"
+        },
+        {
+            "title": "Japan's Cherry Blossom Database, 1,200 Years Old, Has a New Keeper",
+            "url": "https://www.nytimes.com/2026/04/17/climate/japan-cherry-blossom-database-scientist.html"
+        },
+        {
+            "title": "Israeli soldiers using sexual assault to force Palestinians out of West Bank",
+            "url": "https://www.theguardian.com/world/2026/apr/21/israeli-soldiers-using-sexual-assault-to-force-palestinians-out-of-west-bank-report-says"
+        },
+        {
+            "title": "Prediction markets are breaking the news and becoming their own beat",
+            "url": "https://www.niemanlab.org/2026/04/prediction-markets-are-breaking-the-news-and-becoming-their-own-beat/"
+        },
+        {
+            "title": "ggsql: A Grammar of Graphics for SQL",
+            "url": "https://opensource.posit.co/blog/2026-04-20_ggsql_alpha_release/"
+        },
+        {
+            "title": "Quantum Computers Are Not a Threat to 128-Bit Symmetric Keys",
+            "url": "https://words.filippo.io/128-bits/"
+        },
+        {
+            "title": "Modern Rendering Culling Techniques",
+            "url": "https://krupitskas.com/posts/modern_culling_techniques/"
+        },
+        {
+            "title": "Brussels launched an age checking app. Hackers took 2 minutes to break it",
+            "url": "https://www.politico.eu/article/eu-brussels-launched-age-checking-app-hackers-say-took-them-2-minutes-break-it/"
+        },
+        {
+            "title": "All phones sold in the EU to have replaceable batteries from 2027",
+            "url": "https://www.theolivepress.es/spain-news/2026/04/20/eu-to-force-replaceable-batteries-in-phones-and-tablets-from-2027/"
+        },
+        {
+            "title": "Year of the IPv6 Overlay Network",
+            "url": "https://www.defined.net/blog/year-of-the-ipv6-overlay-network/"
+        },
+        {
+            "title": "Kefir C17/C23 Compiler",
+            "url": "https://sr.ht/~jprotopopov/kefir/"
+        },
+        {
+            "title": "OpenAI ad partner now selling ChatGPT ad placements based on \u201cprompt relevance\u201d",
+            "url": "https://www.adweek.com/media/exclusive-leaked-deck-reveals-stackadapts-playbook-for-chatgpt-ads/"
+        },
+        {
+            "title": "WebUSB Extension for Firefox",
+            "url": "https://github.com/ArcaneNibble/awawausb"
+        },
+        {
+            "title": "Zero-Copy Pages in Rust: Or How I Learned to Stop Worrying and Love Lifetimes",
+            "url": "https://redixhumayun.github.io/databases/2026/04/14/zero-copy-pages-in-rust.html"
+        },
+        {
+            "title": "M 7.4 earthquake \u2013 100 km ENE of Miyako, Japan",
+            "url": "https://earthquake.usgs.gov/earthquakes/eventpage/us6000sri7/"
+        },
+        {
+            "title": "10 years ago, someone wrote a test for Servo that included an expiry in 2026",
+            "url": "https://mastodon.social/@jdm_/116429380667467307"
+        },
+        {
+            "title": "Deezer says 44% of songs uploaded to its platform daily are AI-generated",
+            "url": "https://techcrunch.com/2026/04/20/deezer-says-44-of-songs-uploaded-to-its-platform-daily-are-ai-generated/"
+        },
+        {
+            "title": "Bloom (YC P26) Is Hiring",
+            "url": "https://www.ycombinator.com/companies/trybloom/jobs"
+        }
+    ]
+}

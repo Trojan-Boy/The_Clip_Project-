@@ -258,6 +258,17 @@ export function agentService(db: Db) {
     return manager;
   }
 
+  async function ensureManagerParallelPermissions(companyId: string, managerId: string) {
+    const manager = await ensureManager(companyId, managerId);
+    if (manager.permissions?.canCreateAgents) return;
+    await updateAgent(manager.id, {
+      permissions: {
+        ...(typeof manager.permissions === "object" && manager.permissions !== null ? manager.permissions : {}),
+        canCreateAgents: true,
+      },
+    });
+  }
+
   async function assertNoCycle(agentId: string, reportsTo: string | null | undefined) {
     if (!reportsTo) return;
     if (reportsTo === agentId) throw unprocessable("Agent cannot report to itself");
@@ -318,6 +329,7 @@ export function agentService(db: Db) {
     if (data.reportsTo !== undefined) {
       if (data.reportsTo) {
         await ensureManager(existing.companyId, data.reportsTo);
+        await ensureManagerParallelPermissions(existing.companyId, data.reportsTo);
       }
       await assertNoCycle(id, data.reportsTo);
     }
@@ -384,6 +396,7 @@ export function agentService(db: Db) {
     create: async (companyId: string, data: Omit<typeof agents.$inferInsert, "companyId">) => {
       if (data.reportsTo) {
         await ensureManager(companyId, data.reportsTo);
+        await ensureManagerParallelPermissions(companyId, data.reportsTo);
       }
 
       const existingAgents = await db
@@ -618,6 +631,7 @@ export function agentService(db: Db) {
         .from(agents)
         .where(and(eq(agents.companyId, companyId), ne(agents.status, "terminated")));
       const normalizedRows = rows.map(normalizeAgentRow);
+      const byId = new Map(normalizedRows.map((row) => [row.id, row]));
       const byManager = new Map<string | null, typeof normalizedRows>();
       for (const row of normalizedRows) {
         const key = row.reportsTo ?? null;
@@ -634,7 +648,13 @@ export function agentService(db: Db) {
         }));
       };
 
-      return build(null);
+      const explicitRoots = byManager.get(null) ?? [];
+      const orphanRoots = normalizedRows.filter((row) => row.reportsTo !== null && !byId.has(row.reportsTo));
+      const uniqueRoots = Array.from(new Map([...explicitRoots, ...orphanRoots].map((row) => [row.id, row])).values());
+      return uniqueRoots.map((root) => ({
+        ...root,
+        reports: build(root.id),
+      }));
     },
 
     getChainOfCommand: async (agentId: string) => {

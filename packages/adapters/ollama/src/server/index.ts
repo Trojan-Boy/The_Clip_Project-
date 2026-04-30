@@ -61,7 +61,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const cwd = readNonEmptyString(context?.cwd) ?? process.cwd();
   const apiBaseUrl = readNonEmptyString(process.env.PAPERCLIP_API_URL) ?? "http://localhost:3100";
 
-  // Build prompt
+  // Build prompt — enhanced for local models
   const promptTemplate = asString(
     config.promptTemplate,
     "You are agent {{agent.id}} ({{agent.name}}). Continue your Paperclip work.",
@@ -71,7 +71,22 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     .replace(/\{\{agent\.name\}\}/g, agent.name)
     .replace(/\{\{agent\.companyId\}\}/g, agent.companyId);
 
-  const systemPrompt = asString(config.systemPrompt, "");
+  // Strong default system prompt for local models that need more guidance
+  const defaultOllamaSystemPrompt = `You are an autonomous AI agent working in a company managed by Paperclip.
+Your job is to EXECUTE tasks, not just discuss them. You have tools available and MUST use them.
+
+CRITICAL RULES:
+1. Start by checking your assigned tasks with paperclip_list_issues
+2. Pick a task and work on it using the available tools
+3. When done, update the task status to "done" using paperclip_update_issue
+4. If you need to delegate, create subtasks with paperclip_create_issue
+5. ALWAYS take action. Never just describe what you would do.
+6. Use run_bash_command to execute shell commands
+7. Use read_file and write_file for file operations
+
+You are a DOER, not an advisor. Execute tasks step by step.`;
+
+  const systemPrompt = asString(config.systemPrompt, defaultOllamaSystemPrompt);
 
   // Fetch issue and agent context from Paperclip API
   const enrichedContext = await buildEnrichedContext(
@@ -100,7 +115,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   if (onMeta) {
     await onMeta({
       adapterType: "ollama",
-      command: `POST ${baseUrl}/api/chat (Agentic Loop)`,
+      command: `POST ${baseUrl}/api/chat (Agentic Loop — prompt-based tools)`,
       cwd,
       env: { OLLAMA_MODEL: model, OLLAMA_BASE_URL: baseUrl },
       prompt: renderedPrompt,
@@ -108,17 +123,23 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     });
   }
 
-  await onLog("stdout", `[paperclip:ollama] Starting agentic loop with ${model} via Ollama at ${baseUrl}...\n`);
+  await onLog("stdout", `[paperclip:ollama] Starting agentic loop with ${model} via Ollama at ${baseUrl} (prompt-based tool mode)...\n`);
 
   const startTime = Date.now();
 
+  // Ollama callLlm — no native tools sent since we use prompt-based mode
   const callLlm = async (messages: ChatMessage[], tools: unknown[]) => {
     const requestBody: Record<string, unknown> = {
       model,
       messages,
       stream: false,
-      tools: tools.length > 0 ? tools : undefined,
-      ...(temperature !== undefined ? { options: { temperature, ...(numCtx !== undefined ? { num_ctx: numCtx } : {}) } } : {}),
+      // Don't send native tools — we use prompt-based mode for reliability
+      ...(temperature !== undefined || numCtx !== undefined
+        ? { options: {
+            ...(temperature !== undefined ? { temperature } : {}),
+            ...(numCtx !== undefined ? { num_ctx: numCtx } : {}),
+          } }
+        : {}),
     };
 
     const controller = new AbortController();
@@ -182,6 +203,9 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         onLog,
       },
       onLog,
+      // Force prompt-based tool mode for Ollama — local models are unreliable
+      // with native function calling, but work well with explicit prompt instructions
+      forcePromptMode: true,
     });
 
     const elapsedMs = Date.now() - startTime;

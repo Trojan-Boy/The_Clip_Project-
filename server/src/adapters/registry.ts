@@ -94,6 +94,14 @@ import {
   listOllamaModels,
 } from "@paperclipai/adapter-ollama/server";
 import { agentConfigurationDoc as ollamaAgentConfigurationDoc, models as ollamaModels } from "@paperclipai/adapter-ollama";
+import {
+  execute as codingCliLocalExecute,
+  testEnvironment as codingCliLocalTestEnvironment,
+} from "@paperclipai/adapter-coding-cli-local/server";
+import {
+  agentConfigurationDoc as codingCliLocalAgentConfigurationDoc,
+  models as codingCliLocalModels,
+} from "@paperclipai/adapter-coding-cli-local";
 
 const claudeLocalAdapter: ServerAdapterModule = {
   type: "claude_local",
@@ -222,6 +230,15 @@ const ollamaAdapter: ServerAdapterModule = {
   agentConfigurationDoc: ollamaAgentConfigurationDoc,
 };
 
+const codingCliLocalAdapter: ServerAdapterModule = {
+  type: "coding_cli_local",
+  execute: codingCliLocalExecute,
+  testEnvironment: codingCliLocalTestEnvironment,
+  models: codingCliLocalModels,
+  supportsLocalAgentJwt: true,
+  agentConfigurationDoc: codingCliLocalAgentConfigurationDoc,
+};
+
 const adaptersByType = new Map<string, ServerAdapterModule>(
   [
     claudeLocalAdapter,
@@ -234,6 +251,7 @@ const adaptersByType = new Map<string, ServerAdapterModule>(
     hermesLocalAdapter,
     openrouterAdapter,
     ollamaAdapter,
+    codingCliLocalAdapter,
     processAdapter,
     httpAdapter,
   ].map((a) => [a.type, a]),

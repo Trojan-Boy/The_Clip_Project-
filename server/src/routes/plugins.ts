@@ -139,6 +139,14 @@ const BUNDLED_PLUGIN_EXAMPLES: AvailablePluginExample[] = [
     localPath: "packages/plugins/examples/plugin-kitchen-sink-example",
     tag: "example",
   },
+  {
+    packageName: "@paperclipai/plugin-web-research",
+    pluginKey: "paperclip-web-research",
+    displayName: "Web Research & Progress",
+    description: "Gives agents web search and web scraping tools for research. Adds a CEO-controlled pipeline progress bar on the dashboard.",
+    localPath: "packages/plugins/examples/plugin-web-research",
+    tag: "example",
+  },
 ];
 
 function listBundledPluginExamples(): AvailablePluginExample[] {

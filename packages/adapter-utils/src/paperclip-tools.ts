@@ -115,6 +115,34 @@ export const PAPERCLIP_TOOLS: PaperclipToolDefinition[] = [
   {
     type: "function",
     function: {
+      name: "paperclip_request_clarification",
+      description:
+        "Request clarification from the task creator or assigner when requirements are unclear, ambiguous, or missing critical information. Use this BEFORE starting work when: the task description is vague, success criteria are undefined, dependencies are unknown, scope is unclear, or you need user preferences (styling, naming, approach). This tool will comment on the issue with your questions and optionally mark it as blocked pending response.",
+      parameters: {
+        type: "object",
+        properties: {
+          issueId: { type: "string", description: "The issue ID that needs clarification" },
+          questions: {
+            type: "array",
+            items: { type: "string" },
+            description: "Specific questions that need answers before proceeding. Be concise and numbered.",
+          },
+          blocking: {
+            type: "boolean",
+            description: "Whether to mark the issue as 'blocked' status until clarification is received (default: true)",
+          },
+          assumptions: {
+            type: "string",
+            description: "Optional: Describe what you plan to do if no clarification is provided, so the user can correct your assumptions.",
+          },
+        },
+        required: ["issueId", "questions"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "paperclip_list_issues",
       description:
         "List issues in the company. Can filter by assignee or status. Use this to see what tasks are pending, in progress, or need attention.",
@@ -122,7 +150,11 @@ export const PAPERCLIP_TOOLS: PaperclipToolDefinition[] = [
         type: "object",
         properties: {
           assigneeAgentId: { type: "string", description: "Filter by assigned agent ID. Use 'me' for your own tasks." },
-          status: { type: "string", enum: ["open", "in_progress", "done", "cancelled"], description: "Filter by status" },
+          status: {
+            type: "string",
+            enum: ["open", "backlog", "todo", "in_progress", "in_review", "blocked", "done", "cancelled"],
+            description: "Filter by status. Use 'open' for todo/in_progress/in_review/blocked.",
+          },
         },
         required: [],
       },
@@ -138,10 +170,18 @@ export const PAPERCLIP_TOOLS: PaperclipToolDefinition[] = [
         type: "object",
         properties: {
           issueId: { type: "string", description: "The issue ID to update" },
-          status: { type: "string", enum: ["open", "in_progress", "done", "cancelled"], description: "New status" },
+          status: {
+            type: "string",
+            enum: ["backlog", "todo", "in_progress", "in_review", "blocked", "done", "cancelled"],
+            description: "New status. Use 'cancelled' only when the task is obsolete or not useful.",
+          },
           title: { type: "string", description: "New title" },
           assigneeAgentId: { type: "string", description: "Reassign to this agent ID" },
           priority: { type: "string", enum: ["urgent", "high", "medium", "low", "none"], description: "New priority" },
+          comment: {
+            type: "string",
+            description: "Optional reason/comment. Required when cancelling planning/strategy tasks so higher-up governance is auditable.",
+          },
         },
         required: ["issueId"],
       },
@@ -182,6 +222,22 @@ export const PAPERCLIP_TOOLS: PaperclipToolDefinition[] = [
       parameters: {
         type: "object",
         properties: {},
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "paperclip_list_my_tool_usage",
+      description:
+        "List the tools you've used recently (with counts). Use this to update your personal memory ($AGENT_HOME/TOOLS.md) and to understand your current tool habits.",
+      parameters: {
+        type: "object",
+        properties: {
+          lookbackDays: { type: "number", description: "How many days to look back (default 14, max 90)" },
+          limit: { type: "number", description: "Max tools to return (default 25, max 50)" },
+        },
         required: [],
       },
     },
@@ -240,6 +296,134 @@ export const PAPERCLIP_TOOLS: PaperclipToolDefinition[] = [
           command: { type: "string", description: "The bash command to run" },
         },
         required: ["command"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "browser_navigate",
+      description: "Navigate a real browser to a URL and return the rendered text content. Useful for reading web pages that require JavaScript or block simple fetch requests.",
+      parameters: {
+        type: "object",
+        properties: {
+          url: { type: "string", description: "The URL to navigate to" },
+        },
+        required: ["url"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "browser_screenshot",
+      description: "Take a screenshot of the current page in the browser. Returns a base64 encoded PNG image.",
+      parameters: {
+        type: "object",
+        properties: {
+          fullPage: { type: "boolean", description: "Whether to capture the full scrollable page (default: false)" },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "browser_search",
+      description: "Perform a Google search using the browser and return structured results. Better than web_search for finding recent or specific information.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "The search query" },
+          numResults: { type: "number", description: "Number of results to return (default: 5, max: 10)" },
+        },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "browser_click",
+      description: "Click an element on the current page using a CSS selector or exact text match. Useful for navigating sites or accepting cookies.",
+      parameters: {
+        type: "object",
+        properties: {
+          selector: { type: "string", description: "CSS selector of the element to click" },
+          text: { type: "string", description: "Text content of the element to click (if selector is not provided)" },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "browser_type",
+      description: "Type text into an input field on the current page.",
+      parameters: {
+        type: "object",
+        properties: {
+          selector: { type: "string", description: "CSS selector of the input element" },
+          text: { type: "string", description: "Text to type into the element" },
+          submit: { type: "boolean", description: "Whether to press Enter after typing (default: false)" },
+        },
+        required: ["selector", "text"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "browser_extract",
+      description: "Extract text content from specific elements on the current page using a CSS selector.",
+      parameters: {
+        type: "object",
+        properties: {
+          selector: { type: "string", description: "CSS selector of the elements to extract text from" },
+        },
+        required: ["selector"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "tavily_search",
+      description:
+        "Market/web research using Tavily. Use this to quickly find sources and summarize findings. Requires TAVILY_API_KEY to be configured for this agent.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Search query" },
+          maxResults: { type: "number", description: "Max results (default 5, max 10)" },
+          searchDepth: { type: "string", enum: ["basic", "advanced"], description: "Search depth (default basic)" },
+          includeAnswer: { type: "boolean", description: "Include Tavily's answer summary (default true)" },
+          includeRawContent: { type: "boolean", description: "Include raw page content when available (default false)" },
+        },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "cloud_browser_fetch",
+      description:
+        "Fetch rendered page content using a cloud browser (Browserless-compatible). Use for JS-heavy pages. Requires BROWSERLESS_API_KEY to be configured for this agent.",
+      parameters: {
+        type: "object",
+        properties: {
+          url: { type: "string", description: "URL to fetch (http/https)" },
+          endpoint: {
+            type: "string",
+            description:
+              "Optional Browserless endpoint (default https://chrome.browserless.io/content). If you host your own, put it here.",
+          },
+          timeoutMs: { type: "number", description: "Timeout in milliseconds (default 30000)" },
+        },
+        required: ["url"],
       },
     },
   },

@@ -1,0 +1,267 @@
+<!DOCTYPE html><html lang="en"><head><title>The YC Startup Directory | Y Combinator</title><meta name="csrf-param" content="authenticity_token" />
+<meta name="csrf-token" content="qdCWVpkx9bRNHpWYnoY6lAEto_5FNheDx1wmjLReRAU1NY2cPc1LnyqR1_7rhakFsaAK7i5PIiH2DhRoIFnbfg" /><meta charset="utf-8" /><meta content="IE=edge;chrome=1" http-equiv="X-UA-Compatible" /><script nonce="ROXOp21DZNqp6YHRKSH/Vw==">(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+ga('create', 'UA-51714649-1', 'auto');
+ga('require', 'linkid', 'linkid.js');
+ga('send', 'pageview');
+
+function parseUrl(url){
+  var a = document.createElement('a');
+  a.href = url;
+  return {
+    href: a.href,
+    host: a.host || location.host,
+    port: ('0' === a.port || '' === a.port) ? port(a.protocol) : a.port,
+    hash: a.hash,
+    hostname: a.hostname || location.hostname,
+    pathname: a.pathname.charAt(0) != '/' ? '/' + a.pathname : a.pathname,
+    protocol: !a.protocol || ':' == a.protocol ? location.protocol : a.protocol,
+    search: a.search,
+    query: a.search.slice(1)
+  };
+};
+
+function canonical() {
+  var tags = document.getElementsByTagName('link');
+  for (var i = 0, tag; tag = tags[i]; i++) {
+    if (tag.getAttribute('rel') === 'canonical') {
+      return tag.getAttribute('href');
+    }
+  }
+}
+
+function canonicalPath() {
+  var canon = canonical();
+  if (!canon) return window.location.pathname;
+  return parseUrl(canon).pathname;
+}
+
+function canonicalUrl(search) {
+  var canon = canonical();
+  if (canon) return canon.indexOf('?') !== -1 ? canon : canon + search;
+  var url = window.location.href;
+  var i = url.indexOf('#');
+  return i === -1 ? url : url.slice(0, i);
+}</script><meta content="summary_large_image" name="twitter:card" /><meta content="@ycombinator" name="twitter:site" /><meta content="/assets/ycdc/companies/yc-startup-directory.png" name="twitter:image" /><meta content="initial-scale=1, width=device-width, height=device-height" name="viewport" /><meta content="follow" name="robots" /><meta content="The YC Startup Directory" name="title" /><meta content="A list of companies YC has funded across many verticals including hardware, edtech, biotech, healthcare, developer tools, consumer and enterprise, to name a few." name="description" /><meta content="/assets/ycdc/companies/yc-startup-directory.png" name="image" /><meta content="887" name="image_width" /><meta content="419" name="image_height" /><meta content="website" property="og:type" /><meta content="en_US" property="og:locale" /><meta content="Y Combinator" property="og:site_name" /><meta content="The YC Startup Directory | Y Combinator" property="og:title" /><meta content="/assets/ycdc/companies/yc-startup-directory.png" property="og:image" /><meta content="/assets/ycdc/companies/yc-startup-directory.png" property="og:image:url" /><meta content="/assets/ycdc/companies/yc-startup-directory.png" property="og:image:secure_url" /><meta content="https://www.ycombinator.com/companies" property="og:url" /><meta content="A list of companies YC has funded across many verticals including hardware, edtech, biotech, healthcare, developer tools, consumer and enterprise, to name a few." property="og:description" /><meta content="887" property="og:image:width" /><meta content="419" property="og:image:height" /><meta content="23YLYcfP-tmEiWdemh9h6Wi6DIxisMtUtcowUJBSvH0" property="google-site-verification" /><link href="https://bookface-static.ycombinator.com/assets/ycdc/favicon-c8a914eeeba9fe6f7a863b35608b55aeedd7c1ff409c97b9ecb96b7a6c278d70.ico" rel="icon" type="image/x-icon" /><link href="https://bookface-static.ycombinator.com/assets/ycdc/favicon-c8a914eeeba9fe6f7a863b35608b55aeedd7c1ff409c97b9ecb96b7a6c278d70.ico" rel="shortcut icon" type="image/x-icon" /><link href="https://www.ycombinator.com/blog/feed" rel="alternate" type="application/rss+xml" /><link href="https://plus.google.com/113116812547402050884" rel="publisher" /><link href="https://fonts.googleapis.com" rel="preconnect" /><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" /><link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&amp;display=swap" rel="stylesheet" /><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&amp;display=swap" rel="stylesheet" /><script src='https://maps.googleapis.com/maps/api/js?key=AIzaSyC0BuJ43Ncbmuro17vVxWJWrOzzAPZ0rQE&libraries=places&language=en' async defer></script><script nonce="ROXOp21DZNqp6YHRKSH/Vw==">window.process = {
+  cwd: () => "/",
+  env: {},
+};
+window.AlgoliaOpts = {"app":"45BWZJ1SGC","key":"NzllNTY5MzJiZGM2OTY2ZTQwMDEzOTNhYWZiZGRjODlhYzVkNjBmOGRjNzJiMWM4ZTU0ZDlhYTZjOTJiMjlhMWFuYWx5dGljc1RhZ3M9eWNkYyZyZXN0cmljdEluZGljZXM9WUNDb21wYW55X3Byb2R1Y3Rpb24lMkNZQ0NvbXBhbnlfQnlfTGF1bmNoX0RhdGVfcHJvZHVjdGlvbiZ0YWdGaWx0ZXJzPSU1QiUyMnljZGNfcHVibGljJTIyJTVE"};
+window.RAILS_ENV = 'production';</script><script nonce="ROXOp21DZNqp6YHRKSH/Vw==">
+//<![CDATA[
+window.__dynamic_base__="https://bookface-static.ycombinator.com/vite"
+//]]>
+</script><script src="https://bookface-static.ycombinator.com/vite/assets/ycdc-styles-BCXFJaf-.js" crossorigin="" type="module"></script>
+<script src="https://bookface-static.ycombinator.com/vite/assets/inertia-ycdc-4KY5hXJ7.js" crossorigin="" type="module"></script><link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/chunk-CN4-avVc.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/preload-helper-BtH5lZDl.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/component_registry-CqQqTIAx.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/utils-B0eIOZvN.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/exports-CYsJn6d8.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/react-2NzN5w_e.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/sentry-ng7qZfxg.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/schemas-BzK0gc3I.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/MeetupQuestionAdminPreviewSerializer-7lM_3m57.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/Ycdc__BaseCompanySerializer-BaRDOeOt.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/pages-CSFcGtYY.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/with-selector-BbEcETBA.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/v4-BsnVqyCE.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/YCComponentContext-Bw-55NAb.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/useCsrStateStore-Dnk-vDgS.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/LayoutContext-Dq3z0Z-i.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/emotion-react-jsx-runtime.browser.esm-dLBa2FGo.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/extends-fMyM4o_d.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/inheritsLoose-gSsuuG4d.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/objectWithoutPropertiesLoose-XQK6LSG0.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/objectWithoutPropertiesLoose-DJLCCcrw.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/tiny-invariant-DwvX0cXv.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/history-DqbPxtZh.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/prop-types-DuwT1dVl.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/react-router-dom-DNvU-eFh.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/free-solid-svg-icons-DiHCRwaR.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/fontawesome-svg-core-BXz_d3X7.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/index.es-DMv5a--j.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/floating-ui.utils.dom-BdbRXN8m.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/floating-ui.dom-B1cC-mPQ.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/react-dom-Coz-FXCz.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/floating-ui.react-dom-BGvfZmHw.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/dist-B3druW1f.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/dist-C_lc1rIj.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/dist-hYIbwkU6.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/dist-CB2Tikrv.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/dist-Ch2kFOsH.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/dist-BnTWBl4A.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/tslib.es6-JCteFD8t.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/es2015-CNc_IMCu.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/bundle-mjs-CdxvQhyJ.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/cn-Dp21u8En.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/createLucideIcon-CW0gwCJ8.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/check-CpBHe3Op.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/chevron-right-xAIbZ3Ke.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/circle-CWEAglDa.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/Combination-uQ7JniN5.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/DropdownMenu-BmgZTy_S.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/dist-C3PvsOpz.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/dist-BUxZzfxK.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/dist-DVRz9PzE.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/dist-CCc1gPuy.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/dist-CkQgsdKK.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/ZodUtils-DY104Rgh.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/utils-CQuIUauG.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/Switch-BY3s0e8p.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/mande-DvOz1gJb.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/csrf-CM8HjMLs.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/authorizedFetch-BykYP2RL.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/util-CUlR-PRs.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/LoadingSpinner-DTU6vHBn.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/ChatShared-BuPOQBK8.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/cjs-BomjYGzf.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/query-string-cNy1E3C8.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/isSymbol-ClTZyYoG.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/toString-8ND3BreS.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/isObject-Bf2B7fW0.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/_overArg-DnYHhgMH.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/_baseIteratee-D4BAbc0h.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/_getPrototype-BXPiqAQn.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/QueryStringUtils-DmJAHcZB.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/toNumber-BzJ9kTHd.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/debounce-C26vmcDK.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/lodash-Cb7_sR2s.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/client-DLvjCM5j.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/classnames-Cvw5ZRqo.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/react-tooltip.min-BWOCKYde.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/Tooltip-CvknUUWp.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/CopyToClipboard-oQMf9xbv.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/AnchorHeadings-DStwQ4wZ.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/SecurityUtils-CR3vck7t.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/__vite-browser-external-BbStkAvt.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/renderMarkdown-siIueoyp.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/compat-DvMXSI_H.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/OpenGraphExtractionSchema-Dg7siFjn.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/types-BrY5a1mj.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/linkify-Bn4OiYfL.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/browser-yTTZszwE.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/inherits_browser-CmJby6Pu.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/object-keys-Cqro_XEY.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/algoliasearch-xpXFCZde.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/algoliaClient-BURa6eR8.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/free-regular-svg-icons-C2N8cZ2U.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/Toast-ZVS7JOiw.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/dist-BsuF5ASt.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/dist-DFV3d2bq.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/dist-C_J45wZE.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/v4-CI3O8y1x.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/uuid-D21i5MDK.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/upload-Bc8nXkz-.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/clsx-z10Buft4.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/en-US-CquPafBY.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/normalizeDates-B3yrOM3e.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/differenceInCalendarDays-D-NW_KC6.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/format-XAtSenwP.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/addDays-B0Qcj-iu.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/addMonths-Bsue6Gyc.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/setYear-BTxB7Jg8.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/addYears-Bk4j7a9e.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/endOfMonth-CErNBgKh.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/differenceInCalendarYears-BPlkyqGN.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/differenceInDays-DRVBLLFe.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/endOfDay-C0sWvMsf.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/getSeconds-6XIv6BJS.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/getDefaultOptions-DM-qPjHZ.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/parse-ZtiXAbu-.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/isAfter-uwO3TPX6.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/isBefore-DxPU_hZ0.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/isSameDay-Dncwe5tC.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/parseISO-CMGaoAPM.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/subDays-CKPdx7KB.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/subMonths-yyLST86l.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/subYears-BqaPPl_P.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/react-datepicker-7ZWzPMog.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/dist-Byqz8Ys7.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/Dialog-DXaybLCs.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/dist-C2gyGTvK.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/Button-CF_-QgU_.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/AlertDialog-DfgzV5AW.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/Popover-CyjZZCKT.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/dist-CHCZNjif.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/dist-CN3dd4um.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/Label-_UYd2yW-.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/Label-DijNlOkK.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/RadioGroup-BT9HTQNw.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/Input-BzwpEFSM.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/lodash.debounce-CpjSodR_.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/dist-idOLfcAI.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/Card-DCqmsnjX.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/Spinner-DK6mbKJm.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/InlineLoader-BqLrEXmr.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/Tabs-BIzjSO3y.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/emotion-react.browser.esm-DvbqCM5X.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/Select-ef7c0426.esm-BOdeoHKM.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/useCreatable-09aaeb9a.esm-DTNQ5N0H.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/react-select-creatable.esm-BdUK-a69.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/react-select.esm-yf3N-kwD.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/Select-BFk60Y_s.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/Textarea-BmCjC6s8.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/components-B-AwfCBy.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/QueryClientProvider-C8uUKYNc.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/mutation-DxWBoqq0.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/useMutation-CX3T69np.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/query-B04nN_5K.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/useBaseQuery-BJsiRAno.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/useQuery-Bmvs3dvI.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/isPlainObject-BmcmicEg.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/data-C0QASYiP.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/consumer-DOkjf0vw.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/useActionCableSubscription-IJ1EgBQH.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/useObservableJob-BNrotlV9.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/api-Ba4cvE9z.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/ChatSubscriptionProvider-DVqsRkf1.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/coerce-BpnN4JCj.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/user-D3fFsHCE.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/home-api-LxLzhIAv.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/useCurrentUser-R5wyksZU.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/useSafeLocalStorage-DGbQmzX1.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/MiniChatContext-DNfw_azq.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/NavbarFallback-CMd66QTP.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/unleash-react-D85oOTFW.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/infiniteQueryBehavior-bgspol10.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/queryClient-DzwuUO9K.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/queryClient-u08HZZHu.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/Layout-BgtA6-ZX.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/unleashConfig-BRBzxwE8.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/cloneDeep-DdAApPRn.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/call-bound-Djc5nqO7.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/lib-DzUCIESJ.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/index.esm-Fxxsz2YZ.js" as="script" crossorigin="">
+<link rel="modulepreload" href="https://bookface-static.ycombinator.com/vite/assets/index-Bsn_Ma-l.js" as="script" crossorigin=""><link rel="stylesheet" crossorigin="" href="https://bookface-static.ycombinator.com/vite/assets/ycdc-styles-DgwXOjD9.css" media="screen" />
+<link rel="stylesheet" crossorigin="" href="https://bookface-static.ycombinator.com/vite/assets/NewPage-7v7qrga6.css" media="screen" />
+<link rel="stylesheet" crossorigin="" href="https://bookface-static.ycombinator.com/vite/assets/NewNavbarItem-Jh9CXKjI.css" media="screen" />
+<link rel="stylesheet" crossorigin="" href="https://bookface-static.ycombinator.com/vite/assets/ApplyToYCPage-y3ZQ-TZC.css" media="screen" />
+<link rel="stylesheet" crossorigin="" href="https://bookface-static.ycombinator.com/vite/assets/Launches-FP6lVcd-.css" media="screen" />
+<link rel="stylesheet" crossorigin="" href="https://bookface-static.ycombinator.com/vite/assets/LaunchesFormPage-BgKTj1iv.css" media="screen" />
+<link rel="stylesheet" crossorigin="" href="https://bookface-static.ycombinator.com/vite/assets/LaunchesIndexPage-BaiEH-wM.css" media="screen" />
+<link rel="stylesheet" crossorigin="" href="https://bookface-static.ycombinator.com/vite/assets/LaunchesPage-on-pn-qp.css" media="screen" />
+<link rel="stylesheet" crossorigin="" href="https://bookface-static.ycombinator.com/vite/assets/LaunchesShowPage-DoYn1TVx.css" media="screen" />
+<link rel="stylesheet" crossorigin="" href="https://bookface-static.ycombinator.com/vite/assets/PartnersPage-ChhbFxOI.css" media="screen" />
+<link rel="stylesheet" crossorigin="" href="https://bookface-static.ycombinator.com/vite/assets/WhyPage-DFDzpL99.css" media="screen" />
+<link rel="stylesheet" crossorigin="" href="https://bookface-static.ycombinator.com/vite/assets/Breadcrumb-MStH19Bt.css" media="screen" />
+<link rel="stylesheet" crossorigin="" href="https://bookface-static.ycombinator.com/vite/assets/nouislider-v_DV34yi.css" media="screen" />
+<link rel="stylesheet" crossorigin="" href="https://bookface-static.ycombinator.com/vite/assets/editor-DGH5PXuQ.css" media="screen" />
+<link rel="stylesheet" crossorigin="" href="https://bookface-static.ycombinator.com/vite/assets/avenir-gxVq0yOM.css" media="screen" />
+<link rel="stylesheet" crossorigin="" href="https://bookface-static.ycombinator.com/vite/assets/history-NNaqCJ_a.css" media="screen" />
+<link rel="stylesheet" crossorigin="" href="https://bookface-static.ycombinator.com/vite/assets/Dropdown-Bj_lTKYz.css" media="screen" />
+<link rel="stylesheet" crossorigin="" href="https://bookface-static.ycombinator.com/vite/assets/dist-DZ0w4YR5.css" media="screen" />
+<link rel="stylesheet" crossorigin="" href="https://bookface-static.ycombinator.com/vite/assets/react-datepicker-BWcuNA17.css" media="screen" />
+<link rel="stylesheet" crossorigin="" href="https://bookface-static.ycombinator.com/vite/assets/components-CG_FStur.css" media="screen" /><script src="https://bookface-static.ycombinator.com/assets/blog-54db898b518e809d1aaeaacf7e7cc20fa35375fb3348fc2b56cea781f5cdfa55.js" defer="defer"></script></head><body class="ycdc2 companies index"><div data-page="{&quot;component&quot;:&quot;ycdc_new/pages/Companies/IndexPage&quot;,&quot;props&quot;:{&quot;env&quot;:&quot;production&quot;,&quot;currentBatch&quot;:&quot;Spring 2026&quot;},&quot;url&quot;:&quot;/companies&quot;,&quot;version&quot;:&quot;2d7a0c7f2c842019fb586a78f4ea24ac74cc3590&quot;,&quot;encryptHistory&quot;:false,&quot;clearHistory&quot;:false,&quot;rails_context&quot;:{&quot;railsEnv&quot;:&quot;production&quot;,&quot;inMailer&quot;:false,&quot;i18nLocale&quot;:&quot;en&quot;,&quot;i18nDefaultLocale&quot;:&quot;en&quot;,&quot;href&quot;:&quot;https://www.ycombinator.com/companies&quot;,&quot;location&quot;:&quot;/companies&quot;,&quot;scheme&quot;:&quot;https&quot;,&quot;host&quot;:&quot;www.ycombinator.com&quot;,&quot;port&quot;:null,&quot;pathname&quot;:&quot;/companies&quot;,&quot;search&quot;:null,&quot;httpAcceptLanguage&quot;:null,&quot;applyBatchLong&quot;:&quot;Summer 2026&quot;,&quot;applyBatchShort&quot;:&quot;S2026&quot;,&quot;applyDeadlineShort&quot;:&quot;May  4&quot;,&quot;ycdcRetroMode&quot;:false,&quot;currentUser&quot;:null,&quot;serverSide&quot;:null},&quot;id&quot;:&quot;ycdc_new/pages/Companies/IndexPage-react-component-062b0360-6b90-487c-aab1-7193438d8582&quot;,&quot;server_side&quot;:null}" id="ycdc_new/pages/Companies/IndexPage-react-component-062b0360-6b90-487c-aab1-7193438d8582"></div><script nonce="ROXOp21DZNqp6YHRKSH/Vw==">!function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+posthog.init('phc_kqzJJG8aN5nevL0k1oW4Z8iAGswsxBnsWqIBcOuxjah',{
+  api_host:'https://app.posthog.com',
+  disable_session_recording: true,
+  persistence: "localStorage+cookie",
+  loaded: function(posthog) {
+    if ("") {
+      posthog.identify("");
+    }
+  }
+});</script></body></html>

@@ -677,4 +677,78 @@ describeEmbeddedPostgres("issueService.create workspace inheritance", () => {
       mode: "operator_branch",
     });
   });
+
+  it("defaults status to todo when creating an assigned issue without explicit status", async () => {
+    const companyId = randomUUID();
+    const agentId = randomUUID();
+
+    await db.insert(companies).values({
+      id: companyId,
+      name: "Paperclip",
+      issuePrefix: `T${companyId.replace(/-/g, "").slice(0, 6).toUpperCase()}`,
+      requireBoardApprovalForNewAgents: false,
+    });
+
+    await db.insert(agents).values({
+      id: agentId,
+      companyId,
+      name: "CodexCoder",
+      role: "engineer",
+      status: "active",
+      adapterType: "codex_local",
+      adapterConfig: {},
+      runtimeConfig: {},
+      permissions: {},
+    });
+
+    const created = await svc.create(companyId, {
+      title: "Assigned issue",
+      assigneeAgentId: agentId,
+      createdByAgentId: null,
+      createdByUserId: null,
+    });
+
+    expect(created.status).toBe("todo");
+  });
+
+  it("defaults status to todo when assigning a backlog issue without explicit status", async () => {
+    const companyId = randomUUID();
+    const agentId = randomUUID();
+    const issueId = randomUUID();
+
+    await db.insert(companies).values({
+      id: companyId,
+      name: "Paperclip",
+      issuePrefix: `T${companyId.replace(/-/g, "").slice(0, 6).toUpperCase()}`,
+      requireBoardApprovalForNewAgents: false,
+    });
+
+    await db.insert(agents).values({
+      id: agentId,
+      companyId,
+      name: "CodexCoder",
+      role: "engineer",
+      status: "active",
+      adapterType: "codex_local",
+      adapterConfig: {},
+      runtimeConfig: {},
+      permissions: {},
+    });
+
+    await db.insert(issues).values({
+      id: issueId,
+      companyId,
+      title: "Backlog issue",
+      status: "backlog",
+      priority: "medium",
+      assigneeAgentId: null,
+      createdByAgentId: null,
+    });
+
+    const updated = await svc.update(issueId, {
+      assigneeAgentId: agentId,
+    });
+
+    expect(updated?.status).toBe("todo");
+  });
 });

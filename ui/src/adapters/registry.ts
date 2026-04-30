@@ -11,6 +11,7 @@ import { processUIAdapter } from "./process";
 import { httpUIAdapter } from "./http";
 import { openrouterUIAdapter } from "./openrouter";
 import { ollamaUIAdapter } from "./ollama";
+import { codingCliLocalUIAdapter } from "./coding-cli-local";
 
 const uiAdapters: UIAdapterModule[] = [
   claudeLocalUIAdapter,
@@ -23,6 +24,7 @@ const uiAdapters: UIAdapterModule[] = [
   openClawGatewayUIAdapter,
   openrouterUIAdapter,
   ollamaUIAdapter,
+  codingCliLocalUIAdapter,
   processUIAdapter,
   httpUIAdapter,
 ];

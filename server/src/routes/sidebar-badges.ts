@@ -6,9 +6,11 @@ import { sidebarBadgeService } from "../services/sidebar-badges.js";
 import { accessService } from "../services/access.js";
 import { dashboardService } from "../services/dashboard.js";
 import { assertCompanyAccess } from "./authz.js";
+import { installCompanyIdParamNormalizer } from "./company-ref.js";
 
 export function sidebarBadgeRoutes(db: Db) {
   const router = Router();
+  installCompanyIdParamNormalizer(router, db);
   const svc = sidebarBadgeService(db);
   const access = accessService(db);
   const dashboard = dashboardService(db);

@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, or, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import { activityLog, heartbeatRuns, issues } from "@paperclipai/db";
 
@@ -159,5 +159,88 @@ export function activityService(db: Db) {
         .values(data)
         .returning()
         .then((rows) => rows[0]),
+
+    toolUsageSummary: async (
+      companyId: string,
+      opts?: { limitPerAgent?: number; lookbackDays?: number },
+    ): Promise<Record<string, string[]>> => {
+      const limitPerAgent = Math.max(1, Math.min(10, opts?.limitPerAgent ?? 3));
+      const lookbackDays = Math.max(1, Math.min(90, opts?.lookbackDays ?? 14));
+      const since = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000);
+
+      const rows = await db
+        .select({
+          agentId: activityLog.agentId,
+          tool: activityLog.entityId,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(activityLog)
+        .where(
+          and(
+            eq(activityLog.companyId, companyId),
+            eq(activityLog.action, "agent.tool_called"),
+            eq(activityLog.entityType, "tool"),
+            gte(activityLog.createdAt, since),
+            sql`${activityLog.agentId} is not null`,
+          ),
+        )
+        .groupBy(activityLog.agentId, activityLog.entityId);
+
+      const byAgent: Record<string, Array<{ tool: string; count: number }>> = {};
+      for (const row of rows) {
+        const agentId = row.agentId;
+        const tool = String(row.tool ?? "");
+        if (!agentId || !tool) continue;
+        (byAgent[agentId] ??= []).push({ tool, count: Number(row.count ?? 0) });
+      }
+
+      return Object.fromEntries(
+        Object.entries(byAgent).map(([agentId, entries]) => [
+          agentId,
+          entries
+            .sort((a, b) => b.count - a.count)
+            .slice(0, limitPerAgent)
+            .map((e) => e.tool),
+        ]),
+      );
+    },
+
+    toolUsageForAgent: async (companyId: string, agentId: string, opts?: { limit?: number; lookbackDays?: number }) => {
+      const limit = Math.max(1, Math.min(50, opts?.limit ?? 25));
+      const lookbackDays = Math.max(1, Math.min(90, opts?.lookbackDays ?? 14));
+      const since = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000);
+
+      const rows = await db
+        .select({
+          tool: activityLog.entityId,
+          count: sql<number>`count(*)::int`,
+          lastUsedAt: sql<Date>`max(${activityLog.createdAt})`,
+        })
+        .from(activityLog)
+        .where(
+          and(
+            eq(activityLog.companyId, companyId),
+            eq(activityLog.agentId, agentId),
+            eq(activityLog.action, "agent.tool_called"),
+            eq(activityLog.entityType, "tool"),
+            gte(activityLog.createdAt, since),
+          ),
+        )
+        .groupBy(activityLog.entityId)
+        .limit(limit);
+
+      return rows.map((row) => ({
+        tool: String(row.tool ?? ""),
+        count: Number(row.count ?? 0),
+        lastUsedAt: row.lastUsedAt,
+      }))
+        .filter((row) => row.tool.length > 0)
+        .sort((a, b) => {
+          if (b.count !== a.count) return b.count - a.count;
+          const left = a.lastUsedAt ? new Date(a.lastUsedAt).getTime() : 0;
+          const right = b.lastUsedAt ? new Date(b.lastUsedAt).getTime() : 0;
+          return right - left;
+        });
+    },
   };
 }

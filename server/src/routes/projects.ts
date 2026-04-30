@@ -12,9 +12,11 @@ import { projectService, logActivity, workspaceOperationService } from "../servi
 import { conflict } from "../errors.js";
 import { assertCompanyAccess, getActorInfo } from "./authz.js";
 import { startRuntimeServicesForWorkspaceControl, stopRuntimeServicesForProjectWorkspace } from "../services/workspace-runtime.js";
+import { installCompanyIdParamNormalizer, resolveCompanyIdReference } from "./company-ref.js";
 
 export function projectRoutes(db: Db) {
   const router = Router();
+  installCompanyIdParamNormalizer(router, db);
   const svc = projectService(db);
   const workspaceOperations = workspaceOperationService(db);
 
@@ -25,8 +27,10 @@ export function projectRoutes(db: Db) {
         ? companyIdQuery.trim()
         : null;
     if (requestedCompanyId) {
-      assertCompanyAccess(req, requestedCompanyId);
-      return requestedCompanyId;
+      const normalized = await resolveCompanyIdReference(db, requestedCompanyId);
+      if (!normalized) return null;
+      assertCompanyAccess(req, normalized);
+      return normalized;
     }
     if (req.actor.type === "agent" && req.actor.companyId) {
       return req.actor.companyId;

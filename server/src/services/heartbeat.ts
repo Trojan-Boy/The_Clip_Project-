@@ -2415,6 +2415,58 @@ export function heartbeatService(db: Db) {
       agentHome: await (async () => {
         const home = resolveDefaultAgentWorkspaceDir(agent.id);
         await fs.mkdir(home, { recursive: true });
+        const memoryPath = path.join(home, "MEMORY.md");
+        try {
+          await fs.access(memoryPath);
+        } catch {
+          await fs.writeFile(
+            memoryPath,
+            [
+              "# Memory",
+              "",
+              "Personal memory for this agent. Keep entries short and source-linked.",
+              "",
+              "## Active Context",
+              "- Current priorities:",
+              "- Constraints:",
+              "",
+              "## Key Decisions",
+              "- YYYY-MM-DD - <decision> - <why>",
+              "",
+              "## Reusable Facts",
+              "- <fact> - <source/link>",
+              "",
+            ].join("\n"),
+            "utf8",
+          );
+        }
+        const skillsPath = path.join(home, "SKILLS.md");
+        try {
+          await fs.access(skillsPath);
+        } catch {
+          await fs.writeFile(
+            skillsPath,
+            [
+              "# Skills",
+              "",
+              "This is your personal, persistent skills log. Keep it short and practical.",
+              "",
+              "## What I can do well",
+              "- (Add bullets as you prove competence.)",
+              "",
+              "## Tools I use (and when)",
+              "- (Example: `tavily_search` — quick market scans and source lists.)",
+              "",
+              "## New skills learned (date → skill → evidence)",
+              "- YYYY-MM-DD — <skill> — <link to issue/comment/work>",
+              "",
+              "## Skills I want to learn next",
+              "- (Add 1–5 items max.)",
+              "",
+            ].join("\n"),
+            "utf8",
+          );
+        }
         return home;
       })(),
     };

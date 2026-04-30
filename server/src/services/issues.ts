@@ -925,6 +925,13 @@ export function issueService(db: Db) {
       if (data.assigneeUserId) {
         await assertAssignableUser(companyId, data.assigneeUserId);
       }
+      // If the caller assigned an *agent* but did not provide a status,
+      // default to `todo` so the heartbeat/wakeup logic can pick it up.
+      //
+      // Note: `assigneeUserId` does not drive agent execution directly.
+      if (issueData.status === undefined && issueData.assigneeAgentId) {
+        issueData.status = "todo";
+      }
       if (data.status === "in_progress" && !data.assigneeAgentId && !data.assigneeUserId) {
         throw unprocessable("in_progress issues require an assignee");
       }
@@ -1086,6 +1093,14 @@ export function issueService(db: Db) {
         issueData.assigneeAgentId !== undefined ? issueData.assigneeAgentId : existing.assigneeAgentId;
       const nextAssigneeUserId =
         issueData.assigneeUserId !== undefined ? issueData.assigneeUserId : existing.assigneeUserId;
+
+      const assigneeFieldsTouched = issueData.assigneeAgentId !== undefined || issueData.assigneeUserId !== undefined;
+      // If the issue is still in `backlog` and this update assigns an *agent*,
+      // default it to `todo` so it becomes eligible for agent wakeups.
+      if (existing.status === "backlog" && patch.status === undefined && assigneeFieldsTouched && nextAssigneeAgentId) {
+        issueData.status = "todo";
+        patch.status = "todo";
+      }
 
       if (nextAssigneeAgentId && nextAssigneeUserId) {
         throw unprocessable("Issue can only have one assignee");

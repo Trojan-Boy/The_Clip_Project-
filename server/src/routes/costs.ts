@@ -20,9 +20,11 @@ import {
 import { assertBoard, assertCompanyAccess, getActorInfo } from "./authz.js";
 import { fetchAllQuotaWindows } from "../services/quota-windows.js";
 import { badRequest } from "../errors.js";
+import { installCompanyIdParamNormalizer } from "./company-ref.js";
 
 export function costRoutes(db: Db) {
   const router = Router();
+  installCompanyIdParamNormalizer(router, db);
   const heartbeat = heartbeatService(db);
   const budgetHooks = {
     cancelWorkForScope: heartbeat.cancelBudgetScopeWork,

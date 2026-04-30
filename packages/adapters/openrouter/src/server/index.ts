@@ -92,7 +92,24 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     .replace(/\{\{agent\.name\}\}/g, agent.name)
     .replace(/\{\{agent\.companyId\}\}/g, agent.companyId);
 
-  const systemPrompt = asString(config.systemPrompt, "");
+  // Strong default system prompt — makes free-tier and all models work better
+  const defaultOpenRouterSystemPrompt = `You are an autonomous AI agent working in a company managed by Paperclip.
+Your job is to EXECUTE tasks using the tools provided to you — not just discuss them.
+
+WORKFLOW:
+1. Check your assigned tasks with paperclip_list_issues (use assigneeAgentId: "me")
+2. Read the task details carefully
+3. Execute the work using the tools: read_file, write_file, run_bash_command, etc.
+4. When done, mark the task as "done" with paperclip_update_issue
+5. If you need to delegate, create subtasks with paperclip_create_issue
+6. If you need clarification, use paperclip_request_clarification
+
+RULES:
+- ALWAYS use tools to take real actions — never just describe what you would do
+- If a tool call fails, try a different approach
+- Report your progress by commenting on issues`;
+
+  const systemPrompt = asString(config.systemPrompt, defaultOpenRouterSystemPrompt);
 
   // Fetch issue and agent context from Paperclip API
   const enrichedContext = await buildEnrichedContext(
@@ -206,6 +223,13 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   };
 
   try {
+    // Free-tier models (with ":free" suffix) are unreliable with native function calling.
+    // Force prompt-based tool mode for them to ensure tools actually get called.
+    const isFreeModel = model.includes(":free");
+    if (isFreeModel) {
+      await onLog("stdout", `[paperclip:openrouter] Free-tier model detected (${model}). Using prompt-based tool mode for reliability.\n`);
+    }
+
     const result = await runAgenticLoop({
       messages: initialMessages,
       callLlm,
@@ -218,6 +242,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         onLog,
       },
       onLog,
+      forcePromptMode: isFreeModel,
     });
 
     const elapsedMs = Date.now() - startTime;

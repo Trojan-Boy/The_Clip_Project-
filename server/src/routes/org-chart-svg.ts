@@ -9,6 +9,7 @@ export interface OrgNode {
   name: string;
   role: string;
   status: string;
+  toolsUsed?: string[];
   reports: OrgNode[];
   /** Populated by collapseTree: the flattened list of hidden descendants for avatar grid rendering. */
   collapsedReports?: OrgNode[];
@@ -331,6 +332,18 @@ const MINI_AVATAR_PADDING = 10;
 const MINI_AVATAR_MAX_COLS = 8; // max avatars per row in the grid
 const PADDING = 48;
 const LOGO_PADDING = 16;
+const EDGE_COLORS = ["#58a6ff", "#bc8cff", "#3fb950", "#f0883e", "#f778ba", "#79c0ff"] as const;
+
+function edgeColorForRole(role: string): string {
+  const text = role.toLowerCase();
+  let hash = 0;
+  for (let i = 0; i < text.length; i += 1) hash = (hash * 31 + text.charCodeAt(i)) >>> 0;
+  return EDGE_COLORS[hash % EDGE_COLORS.length] ?? "#58a6ff";
+}
+
+function edgeMarkerId(color: string): string {
+  return `edge-arrow-${color.replace("#", "")}`;
+}
 
 // ── Text measurement ─────────────────────────────────────────────
 
@@ -446,7 +459,9 @@ function defaultRenderCard(ln: LayoutNode, theme: StyleTheme): string {
 
   const { roleLabel: defaultRoleLabel, bg, emojiSvg } = getRoleInfo(ln.node);
   // Use node.role directly when it's a collapse badge (e.g. "×15 reports")
-  const roleLabel = ln.node.role.startsWith("×") ? ln.node.role : defaultRoleLabel;
+  const baseRoleLabel = ln.node.role.startsWith("×") ? ln.node.role : defaultRoleLabel;
+  const tools = Array.isArray(ln.node.toolsUsed) ? ln.node.toolsUsed.filter(Boolean).slice(0, 2) : [];
+  const roleLabel = tools.length > 0 ? `${baseRoleLabel} • ${tools.join(", ")}` : baseRoleLabel;
   const cx = ln.x + ln.width / 2;
 
   const avatarCY = ln.y + 27;
@@ -499,34 +514,26 @@ function defaultRenderCard(ln: LayoutNode, theme: StyleTheme): string {
   </g>`;
 }
 
-function renderConnectors(ln: LayoutNode, theme: StyleTheme): string {
+function renderConnectors(ln: LayoutNode, _theme: StyleTheme): string {
   if (ln.children.length === 0) return "";
 
-  const parentCx = ln.x + ln.width / 2;
-  const parentBottom = ln.y + ln.height;
-  const midY = parentBottom + GAP_Y / 2;
-  const lc = theme.lineColor;
-  const lw = theme.lineWidth;
-
   let svg = "";
-  svg += `<line x1="${parentCx}" y1="${parentBottom}" x2="${parentCx}" y2="${midY}" stroke="${lc}" stroke-width="${lw}"/>`;
-
-  if (ln.children.length === 1) {
-    const childCx = ln.children[0].x + ln.children[0].width / 2;
-    svg += `<line x1="${childCx}" y1="${midY}" x2="${childCx}" y2="${ln.children[0].y}" stroke="${lc}" stroke-width="${lw}"/>`;
-  } else {
-    const leftCx = ln.children[0].x + ln.children[0].width / 2;
-    const rightCx = ln.children[ln.children.length - 1].x + ln.children[ln.children.length - 1].width / 2;
-    svg += `<line x1="${leftCx}" y1="${midY}" x2="${rightCx}" y2="${midY}" stroke="${lc}" stroke-width="${lw}"/>`;
-
-    for (const child of ln.children) {
-      const childCx = child.x + child.width / 2;
-      svg += `<line x1="${childCx}" y1="${midY}" x2="${childCx}" y2="${child.y}" stroke="${lc}" stroke-width="${lw}"/>`;
+  for (const child of ln.children) {
+    const x1 = child.x + child.width / 2;
+    const y1 = child.y;
+    const x2 = ln.x + ln.width / 2;
+    const y2 = ln.y + ln.height;
+    const midY = (y1 + y2) / 2;
+    const color = edgeColorForRole(ln.node.role);
+    const markerId = edgeMarkerId(color);
+    svg += `<path d="M ${x1} ${y1} L ${x1} ${midY} L ${x2} ${midY} L ${x2} ${y2}" fill="none" stroke="${color}" stroke-width="1.8" marker-end="url(#${markerId})"/>`;
+    if (ln.node.id !== "virtual-root") {
+      svg += `<text x="${(x1 + x2) / 2}" y="${midY - 6}" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" font-size="9" font-weight="600" fill="${color}">submits to</text>`;
     }
   }
 
   for (const child of ln.children) {
-    svg += renderConnectors(child, theme);
+    svg += renderConnectors(child, _theme);
   }
   return svg;
 }
@@ -586,7 +593,7 @@ function countNodes(nodes: OrgNode[]): number {
 }
 
 /** Threshold: auto-collapse orgs larger than this. */
-const COLLAPSE_THRESHOLD = 20;
+const COLLAPSE_THRESHOLD = Number.POSITIVE_INFINITY;
 /** Max cards that can fit across the 1280px image. */
 const MAX_LEVEL_WIDTH = 8;
 /** Max children shown per parent before truncation with "and N more". */
@@ -745,8 +752,12 @@ export function renderOrgChartSvg(orgTree: OrgNode[], style: OrgChartStyle = "wa
     ? `<text x="${TARGET_W - LOGO_PADDING}" y="${TARGET_H - LOGO_PADDING}" text-anchor="end" font-family="'Inter', -apple-system, BlinkMacSystemFont, sans-serif" font-size="13" font-weight="500" fill="${theme.roleColor}">${svgEscape(overlay.stats)}</text>`
     : "";
 
+  const edgeDefs = EDGE_COLORS
+    .map((color) => `<marker id="${edgeMarkerId(color)}" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse" markerUnits="strokeWidth"><path d="M 0 0 L 8 4 L 0 8 z" fill="${color}"/></marker>`)
+    .join("");
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${TARGET_W}" height="${TARGET_H}" viewBox="0 0 ${TARGET_W} ${TARGET_H}">
-  <defs>${theme.defs(TARGET_W, TARGET_H)}</defs>
+  <defs>${theme.defs(TARGET_W, TARGET_H)}${edgeDefs}</defs>
   <rect width="100%" height="100%" fill="${theme.bgColor}" rx="6"/>
   ${theme.bgExtras(TARGET_W, TARGET_H)}
   <g transform="translate(${logoX}, ${logoY})" color="${theme.watermarkColor}">

@@ -2,9 +2,11 @@ import { Router } from "express";
 import type { Db } from "@paperclipai/db";
 import { dashboardService } from "../services/dashboard.js";
 import { assertCompanyAccess } from "./authz.js";
+import { installCompanyIdParamNormalizer } from "./company-ref.js";
 
 export function dashboardRoutes(db: Db) {
   const router = Router();
+  installCompanyIdParamNormalizer(router, db);
   const svc = dashboardService(db);
 
   router.get("/companies/:companyId/dashboard", async (req, res) => {

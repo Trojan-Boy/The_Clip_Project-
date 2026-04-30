@@ -12,9 +12,11 @@ import { validate } from "../middleware/validate.js";
 import { accessService, logActivity, routineService } from "../services/index.js";
 import { assertCompanyAccess, getActorInfo } from "./authz.js";
 import { forbidden, unauthorized } from "../errors.js";
+import { installCompanyIdParamNormalizer } from "./company-ref.js";
 
 export function routineRoutes(db: Db) {
   const router = Router();
+  installCompanyIdParamNormalizer(router, db);
   const svc = routineService(db);
   const access = accessService(db);
 

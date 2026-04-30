@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paperclip Landing Page</title>
+    <!-- Google Analytics 4 (GA4) Tracking Snippet -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PLACEHOLDER_ID"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-PLACEHOLDER_ID');
+
+      // Simple function to simulate a sign-up event for A/B testing
+      function simulateSignUp(variation) {
+        gtag('event', 'sign_up', {
+          'method': 'email',
+          'test_variation': variation // Pass the A/B test variation as a parameter
+        });
+        console.log(`Simulated sign-up event for variation: ${variation} sent to GA4`);
+        alert('Thank you for signing up!');
+      }
+    </script>
+    <style>
+        body { font-family: sans-serif; text-align: center; margin-top: 50px; }
+        h1 { color: #333; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 5px; }
+        button:hover { background-color: #0056b3; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <img src="https://www.paperclip.ai/logo.png" alt="Paperclip Logo" width="150">
+        <h1 id="landing-headline"></h1>
+        <p>Boost your productivity with AI-powered development assistance.</p>
+        <button id="signup-button">Sign Up Now</button>
+    </div>
+    <script>
+        // A/B Test Implementation
+        const controlHeadline = "Paperclip: Automate Your Development Workflow";
+        const variationHeadline = "Boost Your Productivity with Paperclip's AI-Powered Development Assistance";
+
+        const headlines = {
+            'control': controlHeadline,
+            'variation': variationHeadline
+        };
+
+        const currentVariation = Math.random() < 0.5 ? 'control' : 'variation';
+        const headlineElement = document.getElementById('landing-headline');
+        const signupButton = document.getElementById('signup-button');
+
+        if (headlineElement) {
+            headlineElement.textContent = headlines[currentVariation];
+            console.log(`A/B Test - Displaying: ${currentVariation} headline`);
+        }
+
+        if (signupButton) {
+            signupButton.onclick = () => simulateSignUp(currentVariation);
+        }
+    </script>
+    <script src="index.js"></script>
+</body>
+</html>

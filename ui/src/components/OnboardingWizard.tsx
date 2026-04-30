@@ -69,8 +69,15 @@ type AdapterType =
   | "opencode_local"
   | "pi_local"
   | "cursor"
+  | "ollama"
   | "http"
   | "openclaw_gateway";
+
+// Default Ollama model for Hermes agent (uses local Ollama backend)
+const DEFAULT_HERMES_OLLAMA_MODEL = "ollama/llama3.3";
+
+// Default model for standalone Ollama adapter (must support tool calling)
+const DEFAULT_OLLAMA_MODEL = "qwen2.5:14b";
 
 const DEFAULT_TASK_DESCRIPTION = `You are the CEO. You set the direction for the company.
 
@@ -116,7 +123,7 @@ export function OnboardingWizard() {
 
   // Step 2
   const [agentName, setAgentName] = useState("CEO");
-  const [adapterType, setAdapterType] = useState<AdapterType>("claude_local");
+  const [adapterType, setAdapterType] = useState<AdapterType>("hermes_local");
   const [model, setModel] = useState("");
   const [command, setCommand] = useState("");
   const [args, setArgs] = useState("");
@@ -291,8 +298,8 @@ export function OnboardingWizard() {
     setCompanyName("");
     setCompanyGoal("");
     setAgentName("CEO");
-    setAdapterType("claude_local");
-    setModel("");
+    setAdapterType("hermes_local");
+    setModel(DEFAULT_HERMES_OLLAMA_MODEL);
     setCommand("");
     setArgs("");
     setUrl("");
@@ -316,19 +323,23 @@ export function OnboardingWizard() {
     closeOnboarding();
   }
 
+  function resolveDefaultModel(type: AdapterType): string {
+    switch (type) {
+      case "codex_local": return model || DEFAULT_CODEX_LOCAL_MODEL;
+      case "gemini_local": return model || DEFAULT_GEMINI_LOCAL_MODEL;
+      case "cursor": return model || DEFAULT_CURSOR_LOCAL_MODEL;
+      case "hermes_local": return model || DEFAULT_HERMES_OLLAMA_MODEL;
+      case "ollama": return model || DEFAULT_OLLAMA_MODEL;
+      default: return model;
+    }
+  }
+
   function buildAdapterConfig(): Record<string, unknown> {
     const adapter = getUIAdapter(adapterType);
     const config = adapter.buildAdapterConfig({
       ...defaultCreateValues,
       adapterType,
-      model:
-        adapterType === "codex_local"
-          ? model || DEFAULT_CODEX_LOCAL_MODEL
-          : adapterType === "gemini_local"
-            ? model || DEFAULT_GEMINI_LOCAL_MODEL
-          : adapterType === "cursor"
-          ? model || DEFAULT_CURSOR_LOCAL_MODEL
-          : model,
+      model: resolveDefaultModel(adapterType),
       command,
       args,
       url,
@@ -760,20 +771,13 @@ export function OnboardingWizard() {
                     <label className="text-xs text-muted-foreground mb-2 block">
                       Adapter type
                     </label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2">
                       {[
                         {
-                          value: "claude_local" as const,
-                          label: "Claude Code",
-                          icon: Sparkles,
-                          desc: "Local Claude agent",
-                          recommended: true
-                        },
-                        {
-                          value: "codex_local" as const,
-                          label: "Codex",
-                          icon: Code,
-                          desc: "Local Codex agent",
+                          value: "hermes_local" as const,
+                          label: "Hermes Agent",
+                          icon: HermesIcon,
+                          desc: "Multi-provider agent with memory + tools",
                           recommended: true
                         }
                       ].map((opt) => (
@@ -788,12 +792,7 @@ export function OnboardingWizard() {
                           onClick={() => {
                             const nextType = opt.value as AdapterType;
                             setAdapterType(nextType);
-                            if (nextType === "codex_local" && !model) {
-                              setModel(DEFAULT_CODEX_LOCAL_MODEL);
-                            }
-                            if (nextType !== "codex_local") {
-                              setModel("");
-                            }
+                            setModel("");
                           }}
                         >
                           {opt.recommended && (
@@ -827,6 +826,18 @@ export function OnboardingWizard() {
                       <div className="grid grid-cols-2 gap-2 mt-2">
                         {[
                           {
+                            value: "claude_local" as const,
+                            label: "Claude Code",
+                            icon: Sparkles,
+                            desc: "Local Claude agent"
+                          },
+                          {
+                            value: "codex_local" as const,
+                            label: "Codex",
+                            icon: Code,
+                            desc: "Local Codex agent"
+                          },
+                          {
                             value: "gemini_local" as const,
                             label: "Gemini CLI",
                             icon: Gem,
@@ -849,12 +860,6 @@ export function OnboardingWizard() {
                             label: "Cursor",
                             icon: MousePointer2,
                             desc: "Local Cursor agent"
-                          },
-                          {
-                            value: "hermes_local" as const,
-                            label: "Hermes Agent",
-                            icon: HermesIcon,
-                            desc: "Local multi-provider agent"
                           },
                           {
                             value: "openrouter" as const,
@@ -898,6 +903,10 @@ export function OnboardingWizard() {
                               }
                               if (nextType === "cursor" && !model) {
                                 setModel(DEFAULT_CURSOR_LOCAL_MODEL);
+                                return;
+                              }
+                              if (nextType === "ollama" && !model) {
+                                setModel(DEFAULT_OLLAMA_MODEL);
                                 return;
                               }
                               if (nextType === "opencode_local") {

@@ -1,0 +1,231 @@
+# Paperclip × Hermes Agent — SWOT, Diagnosis & Strategy
+
+## 🔍 Root Cause Diagnosis: Why Your Adapters Are Failing
+
+After analyzing your codebase, I found **three clear root causes** for your adapter failures:
+
+### Root Cause #1: Your agents are running on free/weak models
+
+Your `.paperclip.yaml` shows **all 11 agents** in Idea Factory use cheap or free models:
+
+| Agent | Model | Problem |
+|-------|-------|---------|
+| ceo-agent | `anthropic/claude-3.5-sonnet` | ✅ Good model, but older version |
+| yc-scout | `google/gemini-2.5-flash` | ⚠️ Cheap, weak at multi-step planning |
+| trend-mapper | `deepseek/deepseek-r1:free` | 🔴 **Free tier = aggressive rate limits, no function calling** |
+| idea-scorer | `deepseek/deepseek-r1:free` | 🔴 Same — free models often skip/ignore tools |
+| kill-switch | `google/gemini-2.5-flash` | ⚠️ Flash is fast but poor at complex reasoning |
+| product-architect | `deepseek/deepseek-r1:free` | 🔴 Free tier — unreliable for tool use |
+| cto-agent | `qwen/qwen-2.5-coder-32b-instruct:free` | 🔴 **Free tier, poor function calling support** |
+| coder-agent | `qwen/qwen-2.5-coder-32b-instruct:free` | 🔴 Same issues |
+| designer-agent | `meta-llama/llama-3.3-70b-instruct:free` | 🔴 **Llama 3.3 has limited function calling** |
+| landing-page-agent | `qwen/qwen-2.5-coder-32b-instruct:free` | 🔴 Same issues |
+| growth-agent | `google/gemini-2.5-flash` | ⚠️ Too weak for strategic planning |
+
+> [!CAUTION]
+> **7 out of 11 agents use `:free` models.** Free-tier models on OpenRouter have:
+> - Aggressive rate limiting (429 errors = "ultra mode errors")
+> - Poor or no native function-calling support
+> - Lower quality responses
+> - Higher latency and frequent timeouts
+>
+> **This is almost certainly your main problem.** Hermes won't fix this — it would hit the same model quality issues.
+
+### Root Cause #2: Windows compatibility
+
+Your tool executor uses `run_bash_command` which calls `exec(command)` — this runs in the **system shell**. On Windows, that's `cmd.exe`, not `bash`. So any bash-specific commands (grep, ls, cat, etc.) will fail unless you have WSL/Git Bash in your PATH.
+
+### Root Cause #3: Prompt-mode fallback limitations
+
+Paperclip's agentic loop *does* have a smart fallback for models without native function calling (it injects `<tool_call>` XML into the prompt). But free-tier models often:
+- Ignore the tool instructions entirely
+- Generate malformed JSON inside `<tool_call>` blocks
+- Just describe what they would do instead of actually calling tools
+
+---
+
+## SWOT Analysis
+
+### 🟢 Strengths (of a Hermes integration)
+
+| # | Strength |
+|---|----------|
+| 1 | **Best of both worlds** — Paperclip UI/governance + Hermes tool execution & memory |
+| 2 | **Hermes is model-agnostic** — works with any provider, handles function-calling compatibility internally |
+| 3 | **Persistent skills/memory** — agents learn and reuse successful procedures |
+| 4 | **Proven tool execution** — file ops, terminal, browser, MCP servers |
+| 5 | **Paperclip already has the adapter pattern** — adding `hermes-local` is architecturally clean |
+
+### 🔴 Weaknesses
+
+| # | Weakness |
+|---|----------|
+| 1 | **Two memory/context systems to sync** — Paperclip context + Hermes skills/memory |
+| 2 | **Double debugging complexity** — failures span two frameworks |
+| 3 | **Tool overlap** — Paperclip has 22 tools, Hermes has its own overlapping set |
+| 4 | **Hermes is Linux/Mac focused** — needs WSL2 or Docker on Windows |
+| 5 | **No existing bridge** — you'd be building custom glue code |
+
+### 🟡 Opportunities
+
+| # | Opportunity |
+|---|-------------|
+| 1 | Build a `hermes-local` adapter that spawns Hermes as a process per heartbeat |
+| 2 | Expose Paperclip tools via MCP server for Hermes to call natively |
+| 3 | Replace all broken adapters with one reliable Hermes-based execution engine |
+| 4 | Inject Paperclip task context as temporary Hermes skills before each invocation |
+
+### 🔵 Threats
+
+| # | Threat |
+|---|--------|
+| 1 | **Same model = same quality** — Hermes won't make `deepseek-r1:free` plan better |
+| 2 | **Performance overhead** — spawning Hermes per heartbeat adds startup latency |
+| 3 | **Hermes is still evolving** — API instability risk |
+| 4 | **The real fix might be simpler** — model upgrades + config fixes could solve everything |
+
+---
+
+## ⚡ Recommended Strategy
+
+> [!IMPORTANT]
+> **Phase 1 first (fast, high impact). Phase 2 only if still needed.**
+
+### Phase 1: Fix the Existing System (1-2 hours)
+
+These changes will have **immediate, dramatic impact** on your agents:
+
+#### 1A. Upgrade agent models
+
+Replace the free models with capable ones. Here's a balanced cost/quality tier:
+
+```yaml
+# Recommended model upgrades in .paperclip.yaml
+ceo-agent:       anthropic/claude-sonnet-4       # Best planner
+yc-scout:        google/gemini-2.5-pro            # Good at research
+trend-mapper:    google/gemini-2.5-pro            # Strong reasoning
+idea-scorer:     google/gemini-2.5-flash          # Adequate for scoring
+kill-switch:     google/gemini-2.5-flash          # Adequate for binary decisions
+product-architect: google/gemini-2.5-pro          # Needs strong planning
+cto-agent:       anthropic/claude-sonnet-4        # Technical planning
+coder-agent:     anthropic/claude-sonnet-4        # Code generation
+designer-agent:  google/gemini-2.5-pro            # Design reasoning
+landing-page-agent: anthropic/claude-sonnet-4     # Code generation
+growth-agent:    google/gemini-2.5-flash          # Marketing copy
+```
+
+**Budget-friendly alternative** (still much better than free):
+```yaml
+# All agents on one reliable model
+all agents: google/gemini-2.5-flash   # $0.15/1M input, supports function calling
+```
+
+#### 1B. Fix Windows `run_bash_command` tool
+
+Change [tool-executor.ts](file:///c:/Users/acer/Codeing/The_Clip_Project-/packages/adapter-utils/src/tool-executor.ts#L140-L163) to detect Windows and use PowerShell:
+
+```typescript
+// Before: exec(command)  ← uses cmd.exe on Windows
+// After:  exec(command, { shell: 'powershell.exe' }) on Windows
+```
+
+#### 1C. Improve the system prompt
+
+The default prompt `"You are agent {{agent.id}} ({{agent.name}}). Continue your Paperclip work."` is too vague. A stronger prompt will dramatically improve planning quality even with cheaper models.
+
+---
+
+### Phase 2: Build Hermes Integration (if still needed after Phase 1)
+
+Only proceed here if Phase 1 doesn't solve your core issues (e.g., you specifically want persistent memory, multi-session continuity, or MCP tool ecosystem).
+
+#### Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│                  PAPERCLIP                       │
+│  ┌───────┐  ┌──────────┐  ┌──────────────────┐  │
+│  │  UI   │  │  Tasks   │  │  Budget/Approval  │  │
+│  │ Board │  │  Issues  │  │  Governance       │  │
+│  └───┬───┘  └────┬─────┘  └────────┬─────────┘  │
+│      └───────────┼──────────────────┘            │
+│          ┌───────▼────────┐                      │
+│          │ hermes-local   │  ◄── NEW ADAPTER     │
+│          │   adapter      │                      │
+│          └───────┬────────┘                      │
+└──────────────────┼───────────────────────────────┘
+                   │ spawns process
+          ┌────────▼────────┐
+          │  HERMES AGENT   │
+          │  ┌────────────┐ │
+          │  │ Skills DB  │ │  ← persistent memory
+          │  │ MCP Client │─┼──→ Paperclip MCP Server
+          │  │ Tools      │ │  ← file/terminal/browser
+          │  └────────────┘ │
+          └─────────────────┘
+```
+
+#### Implementation Steps
+
+1. **Create `packages/adapters/hermes-local/`** — new adapter package
+2. **Build MCP Server** — expose Paperclip tools (`paperclip_create_issue`, etc.) as MCP
+3. **Invocation flow:**
+   - Paperclip heartbeat → adapter writes task context as Hermes skill file
+   - Adapter spawns `hermes run "Complete task: {details}"` with MCP config pointing to Paperclip
+   - Hermes runs autonomously using its own tools + Paperclip MCP tools
+   - On exit, adapter reads stdout/stderr, reports results to Paperclip
+4. **Cost tracking** — parse Hermes output logs for token usage
+
+#### Prerequisites for Phase 2
+- WSL2 or Docker on your Windows machine
+- Hermes installed (`curl -fsSL .../install.sh | bash` in WSL2)
+- OpenRouter or Anthropic API key configured for Hermes
+
+---
+
+## Open Questions
+
+> [!IMPORTANT]
+> Answer these to decide which path to take:
+
+1. **Are the "ultra mode errors" actually HTTP 429 (rate limit) errors?** This is the most likely cause with free-tier models.
+
+2. **Do you have an OpenRouter API key with credit balance?** (Free-tier models don't need credit, but paid models do)
+
+3. **Would upgrading to `google/gemini-2.5-flash` (paid, ~$0.15/1M tokens) across all agents be acceptable budget-wise?** This alone would likely fix 90% of your issues.
+
+4. **Do you have WSL2 installed?** (Required for Phase 2 / Hermes)
+
+5. **What's your priority: "make agents work reliably now" or "build the ideal architecture with persistent memory"?**
+
+---
+
+## Proposed Next Steps
+
+| Step | Action | Time |
+|------|--------|------|
+| **1** | You confirm model budget + answer questions above | 5 min |
+| **2** | I upgrade `.paperclip.yaml` models | 10 min |
+| **3** | I fix Windows `run_bash_command` in tool-executor | 15 min |
+| **4** | I improve the default system prompt for OpenRouter adapter | 20 min |
+| **5** | Test: start Paperclip, invoke an agent, verify tool calls work | 15 min |
+| **6** | (If Phase 2) I scaffold `hermes-local` adapter + MCP bridge | 2-3 hours |
+
+## Verification Plan
+
+### Phase 1
+```bash
+pnpm -r typecheck
+pnpm test:run
+pnpm dev
+# Then invoke a test agent from the UI and verify tool calls succeed
+```
+
+### Phase 2
+```bash
+# In WSL2:
+hermes --version
+# Test MCP connectivity
+# Invoke agent via Paperclip → verify Hermes executes → task updated
+pnpm -r typecheck && pnpm test:run && pnpm build
+```

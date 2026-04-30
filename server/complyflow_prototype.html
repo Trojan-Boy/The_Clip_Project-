@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ComplyFlow - Interactive Prototype</title>
+    <style>
+        /* Import Inter font */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background-color: #F9FAFB;
+            color: #1F2937;
+            line-height: 1.5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* Header */
+        .header {
+            background: white;
+            border-bottom: 1px solid #E5E7EB;
+            padding: 16px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 700;
+            color: #2563EB;
+        }
+        
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: #2563EB;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+        
+        .nav-link {
+            color: #6B7280;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        
+        .nav-link:hover {
+            color: #2563EB;
+            background: #EFF6FF;
+        }
+        
+        .nav-link.active {
+            color: #2563EB;
+            background: #EFF6FF;
+        }
+        
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: #2563EB;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+        
+        /* Prototype Container */
+        .prototype-container {
+            min-height: calc(100vh - 73px);
+            padding: 32px 0;
+        }
+        
+        /* Screen Container */
+        .screen-container {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .screen-container.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        /* Screen Header */
+        .screen-header {
+            margin-bottom: 32px;
+        }
+        
+        .screen-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1F2937;
+            margin-bottom: 8px;
+        }
+        
+        .screen-subtitle {
+            font-size: 18px;
+            color: #6B7280;
+            max-width: 600px;
+        }
+        
+        /* Card */
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #E5E7EB;
+            margin-bottom: 24px;
+        }
+        
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1F2937;
+            margin-bottom: 16px;
+        }
+        
+        /* Button Styles */
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: #2563EB;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #1D4ED8;
+        }
+        
+        .btn-secondary {
+            background: #F3F4F6;
+            color: #374151;
+        }
+        
+        .btn-secondary:hover {
+            background: #E5E7EB;
+        }
+        
+        .btn-success {
+            background: #10B981;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #0DA271;
+        }
+        
+        .btn-outline {
+            background: transparent;
+            color: #2563EB;
+            border: 1px solid #2563EB;
+        }
+        
+        .btn-outline:hover {
+            background: #EFF6FF;
+        }
+        
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #D1D5DB;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #2563EB;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        
+        /* Progress Bar */
+        .progress-bar {
+            height: 8px;
+            background: #E5E7EB;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #2563EB;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        /* Dashboard Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+        
+        /* Compliance Score */
+        .compliance-score {
+            text-align: center;
+            padding: 32px;
+        }
+        
+        .score-circle {
+            width: 160px;
+            height: 160px;
+            margin: 0 auto 20px;
+            position: relative;
+        }
+        
+        .score-circle svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+        
+        .score-circle-bg {
+            fill: none;
+            stroke: #E5E7EB;
+            stroke-width: 10;
+        }
+        
+        .score-circle-fill {
+            fill: none;
+            stroke: #2563EB;
+            stroke-width: 10;
+            stroke-linecap: round;
+            stroke-dasharray: 440;
+            stroke-dashoffset: calc(440 - (440 * var(--score)) / 100);
+            transition: stroke-dashoffset 1s ease;
+        }
+        
+        .score-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 32px;
+            font-weight: 700;
+            color: #1F2937;
+        }
+        
+        .score-label {
+            font-size: 14px;
+            color: #6B7280;
+        }
+        
+        /* Task List */
+        .task-list {
+            list-style: none;
+        }
+        
+        .task-item {
+            padding: 16px;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+        
+        .task-item:hover {
+            border-color: #2563EB;
+            background: #F9FAFB;
+        }
+        
+        .task-info h4 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .task-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 14px;
+            color: #6B7280;
+        }
+        
+        .task-priority {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .priority-high {
+            background: #FEF2F2;
+            color: #DC2626;
+        }
+        
+        .priority-medium {
+            background: #FFFBEB;
+            color: #D97706;
+        }
+        
+        .priority-low {
+            background: #F0FDF4;
+            color: #16A34A;
+        }
+        
+        /* Regulation Cards */
+        .regulation-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 24px 0;
+        }
+        
+        .regulation-card {
+            padding: 24px;
+            border: 2px solid #E5E7EB;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .regulation-card:hover {
+            border-color: #2563EB;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .regulation-card.selected {
+            border-color: #2563EB;
+            background: #EFF6FF;
+        }
+        
+        .regulation-icon {
+            width: 48px;
+            height: 48px;
+            background: #EFF6FF;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            color: #2563EB;
+            font-size: 24px;
+        }
+        
+        /* Wizard Navigation */
+        .wizard-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #E5E7EB;
+        }
+        
+        .wizard-steps {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .wizard-step {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 500;
+            background: #E5E7EB;
+            color: #6B7280;
+        }
+        
+        .wizard-step.active {
+            background: #2563EB;
+            color: white;
+        }
+        
+        .wizard-step.completed {
+            background: #10B981;
+            color: white;
+        }
+        
+        /* Notification */
+        .notification {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: white;
+            border-radius: 8px;
+            padding: 16px 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border-left: 4px solid #10B981;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            max-width: 400px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .notification.show {
+            display: flex;
+        }
+        
+        .notification-icon {
+            width: 24px;
+            height: 24px;
+            background: #10B981;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+        }
+        
+        .loading-overlay.show {
+            display: flex;
+        }
+        
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid #E5E7EB;
+            border-top-color: #2563EB;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .regulation-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container header-content">
+            <div class="logo">
+                <div class="logo-icon">C</div>
+                <span>ComplyFlow</span>
+            </div>
+            <nav class="nav-links">
+                <a href="#" class="nav-link active" onclick="showScreen('dashboard')">Dashboard</a>
+                <a href="#" class="nav-link" onclick="showScreen('compliance')">Compliance</a>
+                <a href="#" class="nav-link" onclick="showScreen('documents')">Documents</a>
+                <a href="#" class="nav-link" onclick="showScreen('team')">Team</a>
+                <a href="#" class="nav-link" onclick="showScreen('reports')">Reports</a>
+            </nav>
+            <div class="user-menu">
+                <div class="user-avatar">SA</div>
+                <span>Sarah Anderson</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Prototype Container -->
+    <main class="prototype-container">
+        <div class="container">
+            
+            <!-- Screen 1: Dashboard -->
+            <div id="screen-dashboard" class="screen-container active">
+                <div class="screen-header">
+                    <h1 class="screen-title">Welcome back, Sarah!</h1>
+                    <p class="screen-subtitle">Your compliance status as of today, April 21, 2026</p>
+                </div>
+                
+                <div class="dashboard-grid">
+                    <!-- Compliance Score Card -->
+                    <div class="card">
+                        <h3 class="card-title">Overall Compliance Score</h3>
+                        <div class="compliance-score">
+                            <div class="score-circle" style="--score: 78">
+                                <svg viewBox="0 0 160 160">
+                                    <circle class="score-circle-bg" cx="80" cy="80" r="70"></circle>
+                                    <circle class="score-circle-fill" cx="80" cy="80" r="70"></circle>
+                                </svg>
+                                <div class="score-text">78%</div>
+                            </div>
+                            <div class="score-label">Up 12% from last month</div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 78%"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 14px; color: #6B7280;">
+                            <span>GDPR: 85%</span>
+                            <span>CCPA: 72%</span>
+                            <span>HIPAA: 65%</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="card">
+                        <h3 class="card-title">Quick Actions</h3>
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                            <button class="btn btn-primary" onclick="showScreen('onboarding')">
+                                <span>📋</span> Complete Onboarding
+                            </button>
+                            <button class="btn btn-secondary" onclick="showScreen('gdpr-workflow')">
+                                <span>🔒</span> Start GDPR Compliance
+                            </button>
+                            <button class="btn btn-outline" onclick="showScreen('team')">
+                                <span>👥</span> Invite Team Members
+                            </button>
+                            <button class="btn btn-outline" onclick="showScreen('reports')">
+                                <span>📊</span> Generate Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pending Tasks -->
+                <div class="card">
+                    <h3 class="card-title">Pending Tasks (3)</h3>
+                    <ul class="task-list">
+                        <li class="task-item">
+                            <div class="task-info">
+                                <h4>Update Privacy Policy for GDPR</h4>
+                                <div class="task-meta">
+                                    <span class="task-priority priority-high">High Priority</span>
+                                    <span>Due: Apr 25, 2026</span>
+                                    <span>GDPR</span>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" onclick="completeTask(this)">Mark Complete</button>
+                        </li>
+                        <li class="task-item">
+                            <div class="task-info">
+                                <h4>Complete Employee Training</h4>
+                                <div class="task-meta">
+                                    <span class="task-priority priority-medium">Medium Priority</span>
+                                    <span>Due: May 1, 2026</span>
+                                    <span>CCPA</span>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" onclick="completeTask(this)">Mark Complete</button>
+                        </li>
+                        <li class="task-item">
+                            <div class="task-info">
+                                <h4>Review Data Retention Policy</h4>
+                                <div class="task-meta">
+                                    <span class="task-priority priority-low">Low Priority</span>
+                                    <span>Due: May 15, 2026</span>
+                                    <span>HIPAA</span>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" onclick="completeTask(this)">Mark Complete</button>
+                        </li>
+                    </ul>
+                </div>
+                
+                <!-- Start User Testing -->
+                <div class="card">
+                    <h3 class="card-title">User Testing Scenarios</h3>
+                    <p style="margin-bottom: 20px; color: #6B7280;">Try these scenarios to test the prototype:</p>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <button class="btn btn-success" onclick="startUserTesting('onboarding')">
+                            <span>🚀</span> Scenario 1: New User Onboarding
+                        </button>
+                        <button class="btn btn-success" onclick="startUserTesting('gdpr-workflow')">
+                            <span>🔒</span> Scenario 2: GDPR Compliance
+                        </button>
+                        <button class="btn btn-success" onclick="startUserTesting('daily-management')">
+                            <span>📅</span> Scenario 3: Daily Management
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Screen 2: Onboarding Flow -->
+            <div id="screen-onboarding" class="screen-container">
+                <div class="screen-header">
+                    <h1 class="screen-title">Welcome to ComplyFlow</h1>
+                    <p class="screen-subtitle">Let's set up your compliance profile in 3 easy steps</p>
+                </div>
+                
+                <!-- Wizard Steps -->
+                <div class="wizard-steps" style="margin-bottom: 32px;">
+                    <div class="wizard-step active">1</div>
+                    <div class="wizard-step">2</div>
+                    <div class="wizard-step">3</div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">Step 1: Tell us about your business</h3>
+                    <div class="form-group">
+                        <label class="form-label">Company Name</label>
+                        <input type="text" class="form-input" placeholder="Enter your company name" id="companyName">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Industry</label>
+                        <select class="form-input" id="industry">
+                            <option value="">Select your industry</option>
+                            <option value="tech">Technology</option>
+                            <option value="healthcare">Healthcare</option>
+                            <option value="finance">Finance</option>
+                            <option value="retail">Retail</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Number of Employees</label>
+                        <select class="form-input" id="employeeCount">
+                            <option value="">Select employee count</option>
+                            <option value="1-10">1-10</option>
+                            <option value="11-50">11-50</option>
+                            <option value="51-200">51-200</option>
+                            <option value="201-500">201-500</option>
+                            <option value="500+">500+</option>
+                        </select>
+                    </div>
+                    
+                    <div class="wizard-nav">
+                        <button class="btn btn-secondary" onclick="showScreen('dashboard')">Back to Dashboard</button>
+                        <button class="btn btn-primary" onclick="nextOnboardingStep()">Next Step</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Screen 3: Regulation Selection -->
+            <div id="screen-regulation-selection" class="screen-container">
+                <div class="screen-header">
+                    <h1 class="screen-title">Select Applicable Regulations</h1>
+                    <p class="screen-subtitle">Choose which regulations apply to your business</p>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">Which regulations apply to your business?</h3>
+                    <p style="margin-bottom: 24px; color: #6B7280;">Select all that apply. You can add more later.</p>
+                    
+                    <div class="regulation-cards">
+                        <div class="regulation-card" onclick="selectRegulation(this, 'gdpr')">
+                            <div class="regulation-icon">🇪🇺</div>
+                            <h4 style="margin-bottom: 8px;">GDPR</h4>
+                            <p style="font-size: 14px; color: #6B7280;">General Data Protection Regulation (European Union)</p>
+                            <div style="margin-top: 12px; font-size: 12px; color: #2563EB;">
+                                Recommended for businesses handling EU citizen data
+                            </div>
+                        </div>
+                        
+                        <div class="regulation-card" onclick="selectRegulation(this, 'ccpa')">
+                            <div class="regulation-icon">🇺🇸</div>
+                            <h4 style="margin-bottom: 8px;">CCPA</h4>
+                            <p style="font-size: 14px; color: #6B7280;">California Consumer Privacy Act (California, USA)</p>
+                            <div style="margin-top: 12px; font-size: 12px; color: #2563EB;">
+                                Required for businesses with California customers
+                            </div>
+                        </div>
+                        
+                        <div class="regulation-card" onclick="selectRegulation(this, 'hipaa')">
+                            <div class="regulation-icon">🏥</div>
+                            <h4 style="margin-bottom: 8px;">HIPAA</h4>
+                            <p style="font-size: 14px; color: #6B7280;">Health Insurance Portability and Accountability Act</p>
+                            <div style="margin-top: 12px; font-size: 12px; color: #2563EB;">
+                                Required for healthcare organizations in the USA
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="wizard-nav">
+                        <button class="btn btn-secondary" onclick="showScreen('onboarding')">Back</button>
+                        <button class="btn btn-primary" onclick="completeOnboarding()">Complete Setup</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Screen 4: GDPR Workflow -->
+            <div id="screen-gdpr-workflow" class="screen-container">
+                <div class="screen-header">
+                    <h1 class="screen-title">GDPR Compliance Workflow</h1>
+                    <p class="screen-subtitle">Complete your GDPR compliance in 5 steps</p>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">GDPR Compliance Checklist</h3>
+                    
+                    <div style="margin: 24px 0;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 40%"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+                            <span style="font-size: 14px; color: #6B7280;">Progress: 2 of 5 steps completed</span>
+                            <span style="font-size: 14px; color: #2563EB;">40% Complete</span>
+                        </div>
+                    </div>
+                    
+                    <ul class="task-list">
+                        <li class="task-item" style="background: #F0FDF4;">
+                            <div class="task-info">
+                                <h4>✅ Data Mapping Exercise</h4>
+                                <div class="task-meta">
+                                    <span>Completed: Apr 15, 2026</span>
+                                </div>
+                            </div>
+                            <span style="color: #10B981; font-weight: 500;">Completed</span>
+                        </li>
+                        <li class="task-item" style="background: #F0FDF4;">
+                            <div class="task-info">
+                                <h4>✅ Privacy Policy Creation</h4>
+                                <div class="task-meta">
+                                    <span>Completed: Apr 18, 2026</span>
+                                </div>
+                            </div>
+                            <span style="color: #10B981; font-weight: 500;">Completed</span>
+                        </li>
+                        <li class="task-item">
+                            <div class="task-info">
+                                <h4>Data Processing Agreement</h4>
+                                <div class="task-meta">
+                                    <span class="task-priority priority-high">High Priority</span>
+                                    <span>Due: Apr 25, 2026</span>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" onclick="showScreen('gdpr-dpa')">Start</button>
+                        </li>
+                        <li class="task-item">
+                            <div class="task-info">
+                                <h4>Employee Training</h4>
+                                <div class="task-meta">
+                                    <span class="task-priority priority-medium">Medium Priority</span>
+                                    <span>Due: May 1, 2026</span>
+                                </div>
+                            </div>
+                            <button class="btn btn-secondary">Schedule</button>
+                        </li>
+                        <li class="task-item">
+                            <div class="task-info">
+                                <h4>Final Audit & Certification</h4>
+                                <div class="task-meta">
+                                    <span class="task-priority priority-low">Low Priority</span>
+                                    <span>Due: May 15, 2026</span>
+                                </div>
+                            </div>
+                            <button class="btn btn-secondary">Learn More</button>
+                        </li>
+                    </ul>
+                    
+                    <div class="wizard-nav">
+                        <button class="btn btn-secondary" onclick="showScreen('dashboard')">Back to Dashboard</button>
+                        <button class="btn btn-primary" onclick="showNotification('GDPR workflow progress saved!')">Save Progress</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Screen 5: Team Management -->
+            <div id="screen-team" class="screen-container">
+                <div class="screen-header">
+                    <h1 class="screen-title">Team Management</h1>
+                    <p class="screen-subtitle">Manage your team members and their compliance roles</p>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">Team Members</h3>
+                    
+                    <div style="margin-bottom: 24px;">
+                        <button class="btn btn-primary" onclick="inviteTeamMember()">
+                            <span>👤</span> Invite Team Member
+                        </button>
+                    </div>
+                    
+                    <ul class="task-list">
+                        <li class="task-item">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div class="user-avatar" style="width: 32px; height: 32px;">SA</div>
+                                <div>
+                                    <h4 style="margin-bottom: 2px;">Sarah Anderson</h4>
+                                    <span style="font-size: 14px; color: #6B7280;">Compliance Officer • Admin</span>
+                                </div>
+                            </div>
+                            <span style="color: #10B981; font-weight: 500;">Active</span>
+                        </li>
+                        <li class="task-item">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div class="user-avatar" style="width: 32px; height: 32px; background: #10B981;">MJ</div>
+                                <div>
+                                    <h4 style="margin-bottom: 2px;">Michael Johnson</h4>
+                                    <span style="font-size: 14px; color: #6B7280;">Data Protection Officer • Editor</span>
+                                </div>
+                            </div>
+                            <span style="color: #10B981; font-weight: 500;">Active</span>
+                        </li>
+                        <li class="task-item">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div class="user-avatar" style="width: 32px; height: 32px; background: #F59E0B;">RC</div>
+                                <div>
+                                    <h4 style="margin-bottom: 2px;">Rachel Chen</h4>
+                                    <span style="font-size: 14px; color: #6B7280;">Legal Counsel • Viewer</span>
+                                </div>
+                            </div>
+                            <span style="color: #6B7280;">Pending Invite</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">Invite New Team Member</h3>
+                    <div class="form-group">
+                        <label class="form-label">Email Address</label>
+                        <input type="email" class="form-input" placeholder="Enter email address" id="teamEmail">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Role</label>
+                        <select class="form-input" id="teamRole">
+                            <option value="admin">Admin - Full access</option>
+                            <option value="editor">Editor - Can edit compliance items</option>
+                            <option value="viewer">Viewer - Read-only access</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-success" onclick="sendTeamInvite()">Send Invitation</button>
+                </div>
+            </div>
+            
+            <!-- Screen 6: Reports -->
+            <div id="screen-reports" class="screen-container">
+                <div class="screen-header">
+                    <h1 class="screen-title">Compliance Reports</h1>
+                    <p class="screen-subtitle">Generate and download compliance reports</p>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">Available Reports</h3>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin: 24px 0;">
+                        <div class="regulation-card" onclick="generateReport('compliance-audit')">
+                            <div class="regulation-icon">📊</div>
+                            <h4 style="margin-bottom: 8px;">Compliance Audit Report</h4>
+                            <p style="font-size: 14px; color: #6B7280;">Detailed compliance status across all regulations</p>
+                        </div>
+                        
+                        <div class="regulation-card" onclick="generateReport('gdpr-certification')">
+                            <div class="regulation-icon">🔒</div>
+                            <h4 style="margin-bottom: 8px;">GDPR Certification Report</h4>
+                            <p style="font-size: 14px; color: #6B7280;">Official GDPR compliance documentation</p>
+                        </div>
+                        
+                        <div class="regulation-card" onclick="generateReport('team-activity')">
+                            <div class="regulation-icon">👥</div>
+                            <h4 style="margin-bottom: 8px;">Team Activity Report</h4>
+                            <p style="font-size: 14px; color: #6B7280;">Team member contributions and task completion</p>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 32px;">
+                        <h4 style="margin-bottom: 16px;">Recent Reports</h4>
+                        <ul class="task-list">
+                            <li class="task-item">
+                                <div class="task-info">
+                                    <h4>Q1 2026 Compliance Summary</h4>
+                                    <div class="task-meta">
+                                        <span>Generated: Apr 1, 2026</span>
+                                        <span>PDF • 2.4 MB</span>
+                                    </div>
+                                </div>
+                                <button class="btn btn-outline">Download</button>
+                            </li>
+                            <li class="task-item">
+                                <div class="task-info">
+                                    <h4>GDPR Initial Assessment</h4>
+                                    <div class="task-meta">
+                                        <span>Generated: Mar 15, 2026</span>
+                                        <span>PDF • 1.8 MB</span>
+                                    </div>
+                                </div>
+                                <button class="btn btn-outline">Download</button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Screen 7: Daily Management -->
+            <div id="screen-daily-management" class="screen-container">
+                <div class="screen-header">
+                    <h1 class="screen-title">Daily Compliance Management</h1>
+                    <p class="screen-subtitle">Your daily compliance tasks and activities</p>
+                </div>
+                
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <h3 class="card-title">Today's Tasks</h3>
+                        <ul class="task-list">
+                            <li class="task-item">
+                                <div class="task-info">
+                                    <h4>Review Data Processing Agreement</h4>
+                                    <div class="task-meta">
+                                        <span class="task-priority priority-high">High Priority</span>
+                                        <span>GDPR</span>
+                                    </div>
+                                </div>
+                                <button class="btn btn-primary" onclick="completeTask(this)">Complete</button>
+                            </li>
+                            <li class="task-item">
+                                <div class="task-info">
+                                    <h4>Respond to Data Subject Request</h4>
+                                    <div class="task-meta">
+                                        <span class="task-priority priority-medium">Medium Priority</span>
+                                        <span>GDPR</span>
+                                    </div>
+                                </div>
+                                <button class="btn btn-primary" onclick="completeTask(this)">Complete</button>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card">
+                        <h3 class="card-title">Notifications</h3>
+                        <ul class="task-list">
+                            <li class="task-item">
+                                <div class="task-info">
+                                    <h4>Michael completed "Employee Training"</h4>
+                                    <div class="task-meta">
+                                        <span>10:30 AM</span>
+                                    </div>
+                                </div>
+                            </li>
+                            <li class="task-item">
+                                <div class="task-info">
+                                    <h4>CCPA deadline approaching</h4>
+                                    <div class="task-meta">
+                                        <span>Due in 7 days</span>
+                                    </div>
+                                </div>
+                                <button class="btn btn-outline">View</button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">Quick Status Update</h3>
+                    <div style="display: flex; gap: 20px; margin-top: 16px;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 32px; font-weight: 700; color: #10B981;">12</div>
+                            <div style="font-size: 14px; color: #6B7280;">Tasks Completed</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 32px; font-weight: 700; color: #2563EB;">3</div>
+                            <div style="font-size: 14px; color: #6B7280;">Active Regulations</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 32px; font-weight: 700; color: #F59E0B;">2</div>
+                            <div style="font-size: 14px; color: #6B7280;">Pending Reviews</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 32px; font-weight: 700; color: #8B5CF6;">5</div>
+                            <div style="font-size: 14px; color: #6B7280;">Team Members</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </main>
+
+    <!-- Notification -->
+    <div id="notification" class="notification">
+        <div class="notification-icon">✓</div>
+        <div id="notification-message">Task completed successfully!</div>
+    </div>
+    
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <script>
+        // Global state
+        let selectedRegulations = [];
+        let onboardingStep = 1;
+        
+        // Show a specific screen
+        function showScreen(screenId) {
+            // Hide all screens
+            document.querySelectorAll('.screen-container').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            
+            // Show selected screen
+            const screen = document.getElementById(`screen-${screenId}`);
+            if (screen) {
+                screen.classList.add('active');
+            }
+            
+            // Update navigation
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // Set dashboard as active for non-dashboard screens
+            if (screenId !== 'dashboard') {
+                document.querySelector('.nav-link[onclick*="dashboard"]').classList.add('active');
+            } else {
+                document.querySelector('.nav-link[onclick*="dashboard"]').classList.add('active');
+            }
+        }
+        
+        // Complete task
+        function completeTask(button) {
+            const taskItem = button.closest('.task-item');
+            const taskName = taskItem.querySelector('h4').textContent;
+            
+            showLoading();
+            
+            // Simulate API call
+            setTimeout(() => {
+                taskItem.style.opacity = '0.5';
+                button.textContent = 'Completed';
+                button.disabled = true;
+                button.classList.remove('btn-primary');
+                button.classList.add('btn-success');
+                
+                hideLoading();
+                showNotification(`Task "${taskName}" completed successfully!`);
+                
+                // Remove task after delay
+                setTimeout(() => {
+                    taskItem.remove();
+                    updateTaskCount();
+                }, 1000);
+            }, 800);
+        }
+        
+        // Update task count
+        function updateTaskCount() {
+            const taskCount = document.querySelectorAll('.task-item').length;
+            const titleElements = document.querySelectorAll('.card-title');
+            
+            titleElements.forEach(title => {
+                if (title.textContent.includes('Pending Tasks')) {
+                    title.textContent = `Pending Tasks (${taskCount})`;
+                }
+            });
+        }
+        
+        // Next onboarding step
+        function nextOnboardingStep() {
+            const companyName = document.getElementById('companyName').value;
+            const industry = document.getElementById('industry').value;
+            const employeeCount = document.getElementById('employeeCount').value;
+            
+            if (!companyName || !industry || !employeeCount) {
+                showNotification('Please fill in all fields before proceeding.');
+                return;
+            }
+            
+            showLoading();
+            
+            setTimeout(() => {
+                hideLoading();
+                showScreen('regulation-selection');
+                
+                // Update wizard steps
+                document.querySelectorAll('.wizard-step').forEach((step, index) => {
+                    step.classList.remove('active');
+                    if (index === 1) {
+                        step.classList.add('active');
+                    }
+                    if (index === 0) {
+                        step.classList.add('completed');
+                    }
+                });
+            }, 1000);
+        }
+        
+        // Select regulation
+        function selectRegulation(card, regulation) {
+            card.classList.toggle('selected');
+            
+            if (card.classList.contains('selected')) {
+                if (!selectedRegulations.includes(regulation)) {
+                    selectedRegulations.push(regulation);
+                }
+            } else {
+                const index = selectedRegulations.indexOf(regulation);
+                if (index > -1) {
+                    selectedRegulations.splice(index, 1);
+                }
+            }
+        }
+        
+        // Complete onboarding
+        function completeOnboarding() {
+            if (selectedRegulations.length === 0) {
+                showNotification('Please select at least one regulation.');
+                return;
+            }
+            
+            showLoading();
+            
+            setTimeout(() => {
+                hideLoading();
+                showScreen('dashboard');
+                showNotification(`Onboarding complete! You've selected ${selectedRegulations.length} regulation(s).`);
+                
+                // Update wizard steps
+                document.querySelectorAll('.wizard-step').forEach((step, index) => {
+                    step.classList.remove('active');
+                    step.classList.add('completed');
+                });
+            }, 1500);
+        }
+        
+        // Invite team member
+        function inviteTeamMember() {
+            const email = document.getElementById('teamEmail').value;
+            const role = document.getElementById('teamRole').value;
+            
+            if (!email) {
+                showNotification('Please enter an email address.');
+                return;
+            }
+            
+            showLoading();
+            
+            setTimeout(() => {
+                hideLoading();
+                showNotification(`Invitation sent to ${email} as ${role}`);
+                
+                // Clear form
+                document.getElementById('teamEmail').value = '';
+                document.getElementById('teamRole').value = 'admin';
+            }, 1200);
+        }
+        
+        // Send team invite
+        function sendTeamInvite() {
+            inviteTeamMember();
+        }
+        
+        // Generate report
+        function generateReport(type) {
+            showLoading();
+            
+            setTimeout(() => {
+                hideLoading();
+                
+                let reportName = '';
+                switch(type) {
+                    case 'compliance-audit':
+                        reportName = 'Compliance Audit Report';
+                        break;
+                    case 'gdpr-certification':
+                        reportName = 'GDPR Certification Report';
+                        break;
+                    case 'team-activity':
+                        reportName = 'Team Activity Report';
+                        break;
+                }
+                
+                showNotification(`${reportName} generated successfully! Download will start shortly.`);
+                
+                // Simulate download
+                setTimeout(() => {
+                    showNotification(`${reportName} download complete.`);
+                }, 2000);
+            }, 2000);
+        }
+        
+        // Start user testing scenario
+        function startUserTesting(scenario) {
+            showLoading();
+            
+            setTimeout(() => {
+                hideLoading();
+                
+                switch(scenario) {
+                    case 'onboarding':
+                        showScreen('onboarding');
+                        showNotification('Scenario 1 started: New User Onboarding. Complete the 3-step setup process.');
+                        break;
+                    case 'gdpr-workflow':
+                        showScreen('gdpr-workflow');
+                        showNotification('Scenario 2 started: GDPR Compliance. Work through the GDPR compliance checklist.');
+                        break;
+                    case 'daily-management':
+                        showScreen('daily-management');
+                        showNotification('Scenario 3 started: Daily Management. Complete today\'s tasks and check notifications.');
+                        break;
+                }
+            }, 800);
+        }
+        
+        // Show notification
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            const messageElement = document.getElementById('notification-message');
+            
+            messageElement.textContent = message;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Show loading
+        function showLoading() {
+            document.getElementById('loading-overlay').classList.add('show');
+        }
+        
+        // Hide loading
+        function hideLoading() {
+            document.getElementById('loading-overlay').classList.remove('show');
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set initial compliance score animation
+            setTimeout(() => {
+                const scoreCircle = document.querySelector('.score-circle-fill');
+                scoreCircle.style.transition = 'stroke-dashoffset 2s ease';
+            }, 500);
+            
+            // Update task count initially
+            updateTaskCount();
+        });
+    </script>
+</body>
+</html>

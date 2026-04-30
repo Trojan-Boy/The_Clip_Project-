@@ -10,9 +10,11 @@ import { validate } from "../middleware/validate.js";
 import { accessService, agentService, companySkillService, logActivity } from "../services/index.js";
 import { forbidden } from "../errors.js";
 import { assertCompanyAccess, getActorInfo } from "./authz.js";
+import { installCompanyIdParamNormalizer } from "./company-ref.js";
 
 export function companySkillRoutes(db: Db) {
   const router = Router();
+  installCompanyIdParamNormalizer(router, db);
   const agents = agentService(db);
   const access = accessService(db);
   const svc = companySkillService(db);

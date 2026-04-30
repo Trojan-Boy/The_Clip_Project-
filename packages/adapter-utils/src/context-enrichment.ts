@@ -14,6 +14,25 @@ interface IssueContext {
   key: string | null;
 }
 
+interface HeartbeatIssueContextResponse {
+  issue?: {
+    id?: string;
+    identifier?: string | null;
+    title?: string;
+    description?: string | null;
+    status?: string;
+    priority?: string | null;
+  } | null;
+  goal?: {
+    title?: string | null;
+    status?: string | null;
+  } | null;
+  project?: {
+    name?: string | null;
+    status?: string | null;
+  } | null;
+}
+
 /**
  * Fetch the assigned issue details from the Paperclip API and build
  * a rich system prompt that tells the agent exactly what to work on.
@@ -25,7 +44,7 @@ export async function fetchIssueContext(
   if (!issueId || !ctx.authToken) return "";
 
   try {
-    const url = `${ctx.apiBaseUrl}/api/companies/${ctx.companyId}/issues/${issueId}`;
+    const url = `${ctx.apiBaseUrl}/api/issues/${issueId}/heartbeat-context`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
@@ -40,13 +59,21 @@ export async function fetchIssueContext(
 
     if (!response.ok) return "";
 
-    const issue = (await response.json()) as IssueContext;
+    const heartbeatContext = (await response.json()) as HeartbeatIssueContextResponse;
+    const issue = heartbeatContext.issue;
+    if (!issue?.id || !issue.title || !issue.status) return "";
     const parts = [`\n## Your Current Task\n`];
-    if (issue.key) parts.push(`Issue: ${issue.key}`);
+    if (issue.identifier) parts.push(`Issue: ${issue.identifier}`);
     parts.push(`Title: ${issue.title}`);
     if (issue.priority) parts.push(`Priority: ${issue.priority}`);
     parts.push(`Status: ${issue.status}`);
-    if (issue.body) parts.push(`\nDescription:\n${issue.body}`);
+    if (heartbeatContext.goal?.title) {
+      parts.push(`Goal: ${heartbeatContext.goal.title}`);
+    }
+    if (heartbeatContext.project?.name) {
+      parts.push(`Project: ${heartbeatContext.project.name}`);
+    }
+    if (issue.description) parts.push(`\nDescription:\n${issue.description}`);
     parts.push(``);
     parts.push(`Complete this task by using the tools available to you. Take real actions — don't just describe what you would do.`);
 

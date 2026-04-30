@@ -6,6 +6,7 @@ import { activityService } from "../services/activity.js";
 import { assertBoard, assertCompanyAccess } from "./authz.js";
 import { issueService } from "../services/index.js";
 import { sanitizeRecord } from "../redaction.js";
+import { installCompanyIdParamNormalizer } from "./company-ref.js";
 
 const createActivitySchema = z.object({
   actorType: z.enum(["agent", "user", "system"]).optional().default("system"),
@@ -19,6 +20,7 @@ const createActivitySchema = z.object({
 
 export function activityRoutes(db: Db) {
   const router = Router();
+  installCompanyIdParamNormalizer(router, db);
   const svc = activityService(db);
   const issueSvc = issueService(db);
 
@@ -43,9 +45,31 @@ export function activityRoutes(db: Db) {
     res.json(result);
   });
 
-  router.post("/companies/:companyId/activity", validate(createActivitySchema), async (req, res) => {
-    assertBoard(req);
+  router.get("/companies/:companyId/tool-usage", async (req, res) => {
     const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const agentId = typeof req.query.agentId === "string" ? req.query.agentId.trim() : "";
+    if (!agentId) {
+      res.status(422).json({ error: "Query parameter 'agentId' is required" });
+      return;
+    }
+    const lookbackDays = typeof req.query.lookbackDays === "string" ? Number(req.query.lookbackDays) : undefined;
+    const limit = typeof req.query.limit === "string" ? Number(req.query.limit) : undefined;
+    const result = await svc.toolUsageForAgent(companyId, agentId, {
+      lookbackDays: Number.isFinite(lookbackDays) ? lookbackDays : undefined,
+      limit: Number.isFinite(limit) ? limit : undefined,
+    });
+    res.json(result);
+  });
+
+  router.post("/companies/:companyId/activity", validate(createActivitySchema), async (req, res) => {
+    const companyId = req.params.companyId as string;
+    // Allow agents to log their own activity (e.g. tool usage telemetry).
+    // Still enforce company access so agents can't write across companies.
+    assertCompanyAccess(req, companyId);
+    if (req.actor.type === "board") {
+      assertBoard(req);
+    }
     const event = await svc.create({
       companyId,
       ...req.body,

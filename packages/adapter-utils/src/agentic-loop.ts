@@ -1,13 +1,15 @@
 // ---------------------------------------------------------------------------
 // Agentic Loop — shared tool-calling loop for API-based adapters
 // Supports BOTH native function-calling AND prompt-based fallback
+// Enhanced: robust parsing for Ollama/local models that produce
+// varied tool-call formats (XML, markdown, plain JSON, etc.)
 // ---------------------------------------------------------------------------
 
 import { PAPERCLIP_TOOLS } from "./paperclip-tools.js";
 import { executeToolCall, type ToolExecutorContext } from "./tool-executor.js";
 import type { PaperclipToolCall, PaperclipToolDefinition } from "./paperclip-tools.js";
 
-const MAX_TOOL_ITERATIONS = 20;
+const MAX_TOOL_ITERATIONS = 25;
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant" | "tool";
@@ -35,6 +37,12 @@ export interface AgenticLoopOptions {
   toolCtx: ToolExecutorContext;
   /** Logging callback */
   onLog: (stream: "stdout" | "stderr", chunk: string) => Promise<void>;
+  /**
+   * Force prompt-based tool mode from the start (skip native tool calling).
+   * Useful for models that claim tool support but produce unreliable results
+   * (e.g. most Ollama local models).
+   */
+  forcePromptMode?: boolean;
 }
 
 export interface AgenticLoopResult {
@@ -56,9 +64,13 @@ export interface AgenticLoopResult {
 // Prompt-based tool-calling helpers
 // ---------------------------------------------------------------------------
 
+/** Names of the most commonly used tools — used for examples in the prompt */
+const EXAMPLE_TOOLS = ["paperclip_list_issues", "paperclip_update_issue", "read_file", "write_file", "run_bash_command"];
+
 /**
  * Build a plain-text description of all tools for injection into the system prompt.
  * Used when the model doesn't support native function calling.
+ * Enhanced with clear examples and strict formatting rules for local models.
  */
 function buildToolPrompt(tools: PaperclipToolDefinition[]): string {
   const toolDescriptions = tools.map((t) => {
@@ -78,25 +90,153 @@ function buildToolPrompt(tools: PaperclipToolDefinition[]): string {
   });
 
   return `
-You have access to the following tools. To use a tool, include a <tool_call> block in your response:
+# TOOL SYSTEM
+
+You are an AI agent that EXECUTES tasks using tools. You MUST use tools to take actions — never just describe what you would do.
+
+## How to call a tool
+
+Wrap each tool call in <tool_call> tags with valid JSON inside:
 
 <tool_call>
-{"name": "tool_name", "arguments": {"param1": "value1", "param2": "value2"}}
+{"name": "tool_name", "arguments": {"param1": "value1"}}
 </tool_call>
 
-You can make multiple tool calls in a single response. After each response, the system will execute your tool calls and provide results in <tool_result> blocks. Then you can make more tool calls or provide your final answer.
+## Examples
 
-When you are DONE and have no more tools to call, write your final response as plain text WITHOUT any <tool_call> blocks.
+Example 1 — List your assigned tasks:
+<tool_call>
+{"name": "paperclip_list_issues", "arguments": {"assigneeAgentId": "me", "status": "open"}}
+</tool_call>
 
-IMPORTANT: Always use <tool_call> blocks to take actions. Do NOT just describe what you would do — actually call the tools.
+Example 2 — Mark a task as done:
+<tool_call>
+{"name": "paperclip_update_issue", "arguments": {"issueId": "ISSUE_ID_HERE", "status": "done", "comment": "Completed the task"}}
+</tool_call>
 
-Available tools:
+Example 3 — Read a file:
+<tool_call>
+{"name": "read_file", "arguments": {"path": "README.md"}}
+</tool_call>
+
+Example 4 — Run a command:
+<tool_call>
+{"name": "run_bash_command", "arguments": {"command": "ls -la"}}
+</tool_call>
+
+Example 5 — Multiple tools in one response:
+<tool_call>
+{"name": "paperclip_list_agents", "arguments": {}}
+</tool_call>
+<tool_call>
+{"name": "paperclip_list_issues", "arguments": {"assigneeAgentId": "me"}}
+</tool_call>
+
+## CRITICAL RULES — FOLLOW EXACTLY
+
+1. **NEVER describe actions in text. ONLY use <tool_call> tags.**
+   - WRONG: "I will list your issues to see what tasks are pending."
+   - RIGHT: <tool_call>{"name":"paperclip_list_issues","arguments":{"assigneeAgentId":"me"}}</tool_call>
+
+2. **ALWAYS wrap tool calls in <tool_call>...</tool_call> tags.**
+   - The system ONLY parses text inside these tags. Anything outside is ignored for actions.
+
+3. **Use valid JSON with double quotes.** Single quotes or unquoted keys will fail.
+
+4. **You CAN make multiple <tool_call> blocks in one response.**
+
+5. **After tool calls, the system sends back <tool_result>.** Read the result, then make more tool calls if needed.
+
+6. **Keep calling tools until the task is COMPLETE.** Then write your final summary as plain text (no <tool_call> tags).
+
+7. **If a tool fails, try a different approach — don't give up.**
+
+8. **DO NOT explain your reasoning before calling tools.** Just call them immediately.
+
+## Available tools
+
 ${toolDescriptions.join("\n\n")}
 `.trim();
 }
 
 /**
- * Parse <tool_call> blocks from the model's text response.
+ * Try to parse a JSON string leniently — handles common issues from local models:
+ * - Trailing commas
+ * - Single quotes instead of double quotes
+ * - Unquoted keys
+ * - Extra whitespace / newlines
+ */
+function lenientJsonParse(raw: string): Record<string, unknown> | null {
+  // Strip markdown code fences if present
+  let cleaned = raw.trim();
+  cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+  cleaned = cleaned.trim();
+
+  // Try strict parse first
+  try {
+    return JSON.parse(cleaned) as Record<string, unknown>;
+  } catch { /* continue to lenient */ }
+
+  // Fix trailing commas before } or ]
+  cleaned = cleaned.replace(/,\s*([}\]])/g, "$1");
+
+  // Fix single-quoted strings → double-quoted
+  cleaned = cleaned.replace(/'/g, '"');
+
+  // Try again
+  try {
+    return JSON.parse(cleaned) as Record<string, unknown>;
+  } catch { /* continue */ }
+
+  // Try to extract just the JSON object from surrounding text
+  const objMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (objMatch) {
+    try {
+      return JSON.parse(objMatch[0]) as Record<string, unknown>;
+    } catch { /* give up */ }
+  }
+
+  return null;
+}
+
+/**
+ * Extract tool call name and arguments from a parsed object.
+ * Handles multiple formats models might produce:
+ * - {name: "x", arguments: {...}}
+ * - {name: "x", parameters: {...}}
+ * - {tool: "x", args: {...}}
+ * - {function: "x", params: {...}}
+ */
+function extractToolCallFromObject(obj: Record<string, unknown>): { name: string; arguments: Record<string, unknown> } | null {
+  const name = String(
+    obj.name ?? obj.tool ?? obj.function ?? obj.tool_name ?? obj.function_name ?? "",
+  ).trim();
+  if (!name) return null;
+
+  const args = (
+    obj.arguments ?? obj.parameters ?? obj.args ?? obj.params ?? obj.input ?? {}
+  ) as Record<string, unknown>;
+
+  // If args is a string, try to parse it as JSON
+  if (typeof args === "string") {
+    const parsed = lenientJsonParse(args);
+    return { name, arguments: parsed ?? {} };
+  }
+
+  return { name, arguments: typeof args === "object" && args !== null ? args : {} };
+}
+
+/**
+ * Parse tool calls from the model's text response.
+ * Handles MANY formats that local/free models produce:
+ *
+ * 1. <tool_call>{...}</tool_call>  (standard XML)
+ * 2. ```tool_call\n{...}\n```       (markdown code block)
+ * 3. ```json\n{"name":...}\n```    (JSON code block with tool structure)
+ * 4. Bare JSON object with tool structure
+ * 5. [tool_call] ... [/tool_call]   (bracket variant)
+ * 6. **Tool Call:** {json}          (labeled variant)
+ *
  * Returns extracted tool calls and the remaining text content.
  */
 function parseTextToolCalls(text: string): {
@@ -105,29 +245,63 @@ function parseTextToolCalls(text: string): {
 } {
   const toolCalls: Array<{ id: string; name: string; arguments: Record<string, unknown> }> = [];
   let remaining = text;
-
-  // Match <tool_call>...</tool_call> blocks (including JSON with curly braces)
-  const regex = /<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/gi;
-  let match;
   let callIndex = 0;
 
-  while ((match = regex.exec(text)) !== null) {
-    const jsonStr = match[1].trim();
-    try {
-      const parsed = JSON.parse(jsonStr) as Record<string, unknown>;
-      const name = String(parsed.name ?? "");
-      const args = (parsed.arguments ?? {}) as Record<string, unknown>;
-      if (name) {
-        toolCalls.push({
-          id: `prompt_call_${callIndex++}`,
-          name,
-          arguments: args,
-        });
-      }
-    } catch {
-      // Malformed JSON — skip this block
+  const addCall = (tc: { name: string; arguments: Record<string, unknown> }) => {
+    toolCalls.push({ id: `prompt_call_${callIndex++}`, ...tc });
+  };
+
+  // Strategy 1: <tool_call>...</tool_call> XML blocks
+  const xmlRegex = /<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/gi;
+  let match;
+  while ((match = xmlRegex.exec(text)) !== null) {
+    const parsed = lenientJsonParse(match[1]);
+    if (parsed) {
+      const tc = extractToolCallFromObject(parsed);
+      if (tc) addCall(tc);
     }
     remaining = remaining.replace(match[0], "").trim();
+  }
+  if (toolCalls.length > 0) return { toolCalls, remainingText: remaining };
+
+  // Strategy 2: [tool_call]...[/tool_call] bracket blocks
+  const bracketRegex = /\[tool_call\]\s*([\s\S]*?)\s*\[\/tool_call\]/gi;
+  while ((match = bracketRegex.exec(text)) !== null) {
+    const parsed = lenientJsonParse(match[1]);
+    if (parsed) {
+      const tc = extractToolCallFromObject(parsed);
+      if (tc) addCall(tc);
+    }
+    remaining = remaining.replace(match[0], "").trim();
+  }
+  if (toolCalls.length > 0) return { toolCalls, remainingText: remaining };
+
+  // Strategy 3: ```tool_call\n{...}\n``` or ```json\n{...}\n``` code blocks
+  const codeBlockRegex = /```(?:tool_call|json)?\s*\n([\s\S]*?)\n\s*```/gi;
+  while ((match = codeBlockRegex.exec(text)) !== null) {
+    const parsed = lenientJsonParse(match[1]);
+    if (parsed) {
+      const tc = extractToolCallFromObject(parsed);
+      if (tc) {
+        addCall(tc);
+        remaining = remaining.replace(match[0], "").trim();
+      }
+    }
+  }
+  if (toolCalls.length > 0) return { toolCalls, remainingText: remaining };
+
+  // Strategy 4: Bare JSON objects with tool structure
+  // Look for {"name": "some_tool", ...} patterns in the text
+  const bareJsonRegex = /\{\s*"(?:name|tool|function)"\s*:\s*"([^"]+)"[\s\S]*?\}/g;
+  while ((match = bareJsonRegex.exec(text)) !== null) {
+    const parsed = lenientJsonParse(match[0]);
+    if (parsed) {
+      const tc = extractToolCallFromObject(parsed);
+      if (tc) {
+        addCall(tc);
+        remaining = remaining.replace(match[0], "").trim();
+      }
+    }
   }
 
   return { toolCalls, remainingText: remaining };
@@ -150,7 +324,7 @@ function parseTextToolCalls(text: string): {
  * The mode is auto-detected — no configuration needed.
  */
 export async function runAgenticLoop(options: AgenticLoopOptions): Promise<AgenticLoopResult> {
-  const { callLlm, toolCtx, onLog } = options;
+  const { callLlm, toolCtx, onLog, forcePromptMode } = options;
   const messages = [...options.messages];
   const tools = PAPERCLIP_TOOLS;
 
@@ -159,7 +333,22 @@ export async function runAgenticLoop(options: AgenticLoopOptions): Promise<Agent
   let lastModel: string | null = null;
   let lastRaw: Record<string, unknown> | null = null;
   let finalContent = "";
-  let usePromptMode = false;
+  let usePromptMode = Boolean(forcePromptMode);
+
+  // If forced into prompt mode, inject tool descriptions immediately
+  if (usePromptMode) {
+    const toolPrompt = buildToolPrompt(tools);
+    const sysIdx = messages.findIndex((m) => m.role === "system");
+    if (sysIdx >= 0) {
+      messages[sysIdx] = {
+        ...messages[sysIdx],
+        content: `${toolPrompt}\n\n${messages[sysIdx].content ?? ""}`,
+      };
+    } else {
+      messages.unshift({ role: "system", content: toolPrompt });
+    }
+    await onLog("stdout", `[paperclip:tools] Using prompt-based tool mode (forced).\n`);
+  }
 
   while (iterations < MAX_TOOL_ITERATIONS) {
     iterations++;
@@ -193,7 +382,12 @@ export async function runAgenticLoop(options: AgenticLoopOptions): Promise<Agent
         const funcName = tc.function.name;
         let funcArgs: Record<string, unknown> = {};
         try {
-          funcArgs = JSON.parse(tc.function.arguments);
+          // Ollama returns arguments as an object; OpenAI returns a JSON string
+          if (typeof tc.function.arguments === "object" && tc.function.arguments !== null) {
+            funcArgs = tc.function.arguments as unknown as Record<string, unknown>;
+          } else if (typeof tc.function.arguments === "string") {
+            funcArgs = JSON.parse(tc.function.arguments);
+          }
         } catch {
           funcArgs = {};
         }
