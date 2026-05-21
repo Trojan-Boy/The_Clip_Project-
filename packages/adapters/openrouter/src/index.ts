@@ -31,7 +31,7 @@ Core fields:
 - maxTokens (number, optional): max tokens in response
 
 Operational fields:
-- timeoutSec (number, optional): request timeout in seconds (default: 120)
+- timeoutSec (number, optional): request timeout in seconds (default: 300)
 
 Environment variables:
 - OPENROUTER_API_KEY: API key for OpenRouter

@@ -39,6 +39,10 @@ const mockAgentService = vi.hoisted(() => ({
   updatePermissions: vi.fn(),
   getChainOfCommand: vi.fn(),
   resolveByReference: vi.fn(),
+  listKeys: vi.fn(),
+  createApiKey: vi.fn(),
+  revokeKey: vi.fn(),
+  rotateKey: vi.fn(),
 }));
 
 const mockAccessService = vi.hoisted(() => ({
@@ -139,6 +143,30 @@ describe("agent permission routes", () => {
     mockAgentService.resolveByReference.mockResolvedValue({ ambiguous: false, agent: baseAgent });
     mockAgentService.create.mockResolvedValue(baseAgent);
     mockAgentService.updatePermissions.mockResolvedValue(baseAgent);
+    mockAgentService.listKeys.mockResolvedValue([]);
+    mockAgentService.createApiKey.mockResolvedValue({
+      id: "key-1",
+      name: "default",
+      token: "pcp_new",
+      createdAt: new Date("2026-03-19T00:00:00.000Z"),
+    });
+    mockAgentService.revokeKey.mockResolvedValue({
+      id: "key-1",
+      agentId,
+      companyId,
+      name: "default",
+      keyHash: "hash",
+      lastUsedAt: null,
+      revokedAt: new Date("2026-03-19T00:00:00.000Z"),
+      createdAt: new Date("2026-03-19T00:00:00.000Z"),
+    });
+    mockAgentService.rotateKey.mockResolvedValue({
+      id: "key-2",
+      name: "rotated",
+      token: "pcp_rotated",
+      createdAt: new Date("2026-03-19T00:00:00.000Z"),
+      rotatedFromKeyId: "key-1",
+    });
     mockAccessService.getMembership.mockResolvedValue({
       id: "membership-1",
       companyId,
@@ -310,5 +338,50 @@ describe("agent permission routes", () => {
         status: "todo",
       },
     ]);
+  });
+
+  it("blocks board users from listing keys for agents outside their companies", async () => {
+    const app = createApp({
+      type: "board",
+      userId: "board-user",
+      source: "session",
+      isInstanceAdmin: false,
+      companyIds: ["33333333-3333-4333-8333-333333333333"],
+    });
+
+    const res = await request(app).get(`/api/agents/${agentId}/keys`);
+
+    expect(res.status).toBe(403);
+    expect(mockAgentService.listKeys).not.toHaveBeenCalled();
+  });
+
+  it("rotates an agent key through a dedicated endpoint", async () => {
+    const app = createApp({
+      type: "board",
+      userId: "board-user",
+      source: "session",
+      isInstanceAdmin: false,
+      companyIds: [companyId],
+    });
+
+    const res = await request(app)
+      .post(`/api/agents/${agentId}/keys/key-1/rotate`)
+      .send({ name: "rotated" });
+
+    expect(res.status).toBe(201);
+    expect(mockAgentService.rotateKey).toHaveBeenCalledWith(agentId, "key-1", "rotated");
+    expect(res.body).toMatchObject({
+      id: "key-2",
+      name: "rotated",
+      token: "pcp_rotated",
+      rotatedFromKeyId: "key-1",
+    });
+    expect(mockLogActivity).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      action: "agent.key_rotated",
+      details: expect.objectContaining({
+        keyId: "key-2",
+        rotatedFromKeyId: "key-1",
+      }),
+    }));
   });
 });

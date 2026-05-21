@@ -1,5 +1,6 @@
 
 import json
+import re
 from typing import Dict, Any, Optional, List
 
 class Node:
@@ -151,6 +152,40 @@ class RegulatoryGraphProcessor:
             "relationships": [rel.to_dict() for rel in self.relationships.values()],
             "schema": self.schema
         }
+
+    def to_mermaid(self, direction: str = "TD") -> str:
+        """Export the current graph as Mermaid flowchart source for UI rendering."""
+        safe_direction = direction if direction in {"TD", "TB", "BT", "LR", "RL"} else "TD"
+        lines = [f"flowchart {safe_direction}"]
+
+        for node_id in sorted(self.nodes):
+            node = self.nodes[node_id]
+            label = node.properties.get("name") or node.properties.get("title") or node.node_id
+            lines.append(f'  {self._mermaid_id(node.node_id)}["{self._mermaid_label(str(label), node.node_type)}"]')
+
+        for relationship_id in sorted(self.relationships):
+            relationship = self.relationships[relationship_id]
+            source = self._mermaid_id(relationship.source_node_id)
+            target = self._mermaid_id(relationship.target_node_id)
+            rel_label = self._mermaid_label(relationship.relationship_type.replace("_", " "), "")
+            lines.append(f'  {source} -->|"{rel_label}"| {target}')
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def _mermaid_id(value: str) -> str:
+        safe = re.sub(r"[^0-9A-Za-z_]", "_", value)
+        if not safe or safe[0].isdigit():
+            safe = f"n_{safe}"
+        return safe
+
+    @staticmethod
+    def _mermaid_label(value: str, node_type: str) -> str:
+        label = value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ").strip()
+        if node_type:
+            type_label = node_type.replace("_", " ").strip()
+            return f"{label}<br/><small>{type_label}</small>"
+        return label
 
     def deserialize_graph(self, graph_data: Dict[str, Any]):
         self.nodes = {}

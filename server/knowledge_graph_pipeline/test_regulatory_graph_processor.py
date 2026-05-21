@@ -130,5 +130,25 @@ class TestRegulatoryGraphProcessor(unittest.TestCase):
         self.assertEqual(self.processor.get_node("n1").properties["name"], new_processor.get_node("n1").properties["name"])
         self.assertEqual(self.processor.get_relationship("r1").properties["order"], new_processor.get_relationship("r1").properties["order"])
 
+    def test_to_mermaid_exports_renderable_graph(self):
+        self.processor.create_node("reg-gdpr", "Regulation", {"name": 'GDPR "Privacy"'})
+        self.processor.create_node("req:17", "Requirement", {"title": "Right to Erasure"})
+        self.processor.create_relationship("rel1", "HAS_REQUIREMENT", "reg-gdpr", "req:17")
+
+        mermaid = self.processor.to_mermaid("LR")
+
+        self.assertIn("flowchart LR", mermaid)
+        self.assertIn('reg_gdpr["GDPR \\"Privacy\\"<br/><small>Regulation</small>"]', mermaid)
+        self.assertIn('req_17["Right to Erasure<br/><small>Requirement</small>"]', mermaid)
+        self.assertIn('reg_gdpr -->|"HAS REQUIREMENT"| req_17', mermaid)
+
+    def test_to_mermaid_rejects_invalid_direction(self):
+        self.processor.create_node("1", "Regulation", {"name": "GDPR"})
+
+        mermaid = self.processor.to_mermaid("SIDEWAYS")
+
+        self.assertTrue(mermaid.startswith("flowchart TD"))
+        self.assertIn('n_1["GDPR<br/><small>Regulation</small>"]', mermaid)
+
 if __name__ == '__main__':
     unittest.main()

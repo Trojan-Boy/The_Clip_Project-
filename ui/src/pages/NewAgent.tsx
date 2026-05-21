@@ -37,6 +37,8 @@ const SUPPORTED_ADVANCED_ADAPTER_TYPES = new Set<CreateConfigValues["adapterType
   "cursor",
   "hermes_local",
   "openclaw_gateway",
+  "openrouter",
+  "ollama",
 ]);
 
 function createValuesForAdapterType(
@@ -54,6 +56,10 @@ function createValuesForAdapterType(
     nextValues.model = DEFAULT_CURSOR_LOCAL_MODEL;
   } else if (adapterType === "opencode_local") {
     nextValues.model = "";
+  } else if (adapterType === "openrouter") {
+    nextValues.model = "google/gemini-2.5-flash";
+  } else if (adapterType === "ollama") {
+    nextValues.model = "llama3.3";
   }
   return nextValues;
 }

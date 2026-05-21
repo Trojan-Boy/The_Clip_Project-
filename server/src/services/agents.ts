@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { and, desc, eq, gte, inArray, lt, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lt, ne, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import {
   agents,
@@ -616,13 +616,62 @@ export function agentService(db: Db) {
         .from(agentApiKeys)
         .where(eq(agentApiKeys.agentId, id)),
 
-    revokeKey: async (keyId: string) => {
+    revokeKey: async (agentId: string, keyId: string) => {
       const rows = await db
         .update(agentApiKeys)
         .set({ revokedAt: new Date() })
-        .where(eq(agentApiKeys.id, keyId))
+        .where(and(eq(agentApiKeys.agentId, agentId), eq(agentApiKeys.id, keyId), isNull(agentApiKeys.revokedAt)))
         .returning();
       return rows[0] ?? null;
+    },
+
+    rotateKey: async (agentId: string, keyId: string, name?: string) => {
+      const existingAgent = await getById(agentId);
+      if (!existingAgent) throw notFound("Agent not found");
+      if (existingAgent.status === "pending_approval") {
+        throw conflict("Cannot rotate keys for pending approval agents");
+      }
+      if (existingAgent.status === "terminated") {
+        throw conflict("Cannot rotate keys for terminated agents");
+      }
+
+      const token = createToken();
+      const keyHash = hashToken(token);
+      const now = new Date();
+
+      return db.transaction(async (tx) => {
+        const oldKey = await tx
+          .select()
+          .from(agentApiKeys)
+          .where(and(eq(agentApiKeys.agentId, agentId), eq(agentApiKeys.id, keyId), isNull(agentApiKeys.revokedAt)))
+          .then((rows) => rows[0] ?? null);
+
+        if (!oldKey) return null;
+
+        await tx
+          .update(agentApiKeys)
+          .set({ revokedAt: now })
+          .where(and(eq(agentApiKeys.agentId, agentId), eq(agentApiKeys.id, keyId), isNull(agentApiKeys.revokedAt)));
+
+        const created = await tx
+          .insert(agentApiKeys)
+          .values({
+            agentId,
+            companyId: existingAgent.companyId,
+            name: name ?? oldKey.name,
+            keyHash,
+          })
+          .returning()
+          .then((rows) => rows[0]);
+
+        return {
+          id: created.id,
+          name: created.name,
+          token,
+          createdAt: created.createdAt,
+          rotatedFromKeyId: oldKey.id,
+        };
+      });
     },
 
     orgForCompany: async (companyId: string) => {

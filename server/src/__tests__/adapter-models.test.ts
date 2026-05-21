@@ -2,17 +2,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { models as codexFallbackModels } from "@paperclipai/adapter-codex-local";
 import { models as cursorFallbackModels } from "@paperclipai/adapter-cursor-local";
 import { models as opencodeFallbackModels } from "@paperclipai/adapter-opencode-local";
+import { models as openrouterFallbackModels } from "@paperclipai/adapter-openrouter";
 import { resetOpenCodeModelsCacheForTests } from "@paperclipai/adapter-opencode-local/server";
 import { listAdapterModels } from "../adapters/index.js";
 import { resetCodexModelsCacheForTests } from "../adapters/codex-models.js";
 import { resetCursorModelsCacheForTests, setCursorModelsRunnerForTests } from "../adapters/cursor-models.js";
+import { resetOpenRouterModelsCacheForTests } from "../adapters/openrouter-models.js";
 
 describe("adapter model listing", () => {
   beforeEach(() => {
     delete process.env.OPENAI_API_KEY;
+    delete process.env.OPENROUTER_API_KEY;
+    delete process.env.OPENROUTER_BASE_URL;
     delete process.env.PAPERCLIP_OPENCODE_COMMAND;
     resetCodexModelsCacheForTests();
     resetCursorModelsCacheForTests();
+    resetOpenRouterModelsCacheForTests();
     setCursorModelsRunnerForTests(null);
     resetOpenCodeModelsCacheForTests();
     vi.restoreAllMocks();
@@ -62,6 +67,35 @@ describe("adapter model listing", () => {
 
     const models = await listAdapterModels("codex_local");
     expect(models).toEqual(codexFallbackModels);
+  });
+
+  it("returns OpenRouter fallback models when no OpenRouter key is available", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const models = await listAdapterModels("openrouter");
+
+    expect(models).toEqual(openrouterFallbackModels);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("loads OpenRouter models dynamically and merges fallback options", async () => {
+    process.env.OPENROUTER_API_KEY = "sk-or-test";
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { id: "anthropic/claude-4.6-sonnet", name: "Claude Sonnet 4.6" },
+          { id: "google/gemini-2.5-flash", name: "Gemini 2.5 Flash" },
+        ],
+      }),
+    } as Response);
+
+    const first = await listAdapterModels("openrouter");
+    const second = await listAdapterModels("openrouter");
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(first).toEqual(second);
+    expect(first.some((model) => model.id === "anthropic/claude-4.6-sonnet")).toBe(true);
+    expect(first.some((model) => model.id === "google/gemma-4-31b-it:free")).toBe(true);
   });
 
 

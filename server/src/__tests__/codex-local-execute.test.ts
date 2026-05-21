@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { execute } from "@paperclipai/adapter-codex-local/server";
 
-async function writeFakeCodexCommand(commandPath: string): Promise<void> {
+async function writeFakeCodexCommand(baseCommandPath: string): Promise<string> {
   const script = `#!/usr/bin/env node
 const fs = require("node:fs");
 
@@ -24,8 +24,16 @@ console.log(JSON.stringify({ type: "thread.started", thread_id: "codex-session-1
 console.log(JSON.stringify({ type: "item.completed", item: { type: "agent_message", text: "hello" } }));
 console.log(JSON.stringify({ type: "turn.completed", usage: { input_tokens: 1, cached_input_tokens: 0, output_tokens: 1 } }));
 `;
-  await fs.writeFile(commandPath, script, "utf8");
-  await fs.chmod(commandPath, 0o755);
+  if (process.platform === "win32") {
+    const jsPath = `${baseCommandPath}.js`;
+    const cmdPath = `${baseCommandPath}.cmd`;
+    await fs.writeFile(jsPath, script, "utf8");
+    await fs.writeFile(cmdPath, `@echo off\r\n"${process.execPath}" "%~dp0${path.basename(jsPath)}" %*\r\n`, "utf8");
+    return cmdPath;
+  }
+  await fs.writeFile(baseCommandPath, script, "utf8");
+  await fs.chmod(baseCommandPath, 0o755);
+  return baseCommandPath;
 }
 
 type CapturePayload = {
@@ -44,7 +52,7 @@ describe("codex execute", () => {
   it("uses a Paperclip-managed CODEX_HOME outside worktree mode while preserving shared auth and config", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-codex-execute-default-"));
     const workspace = path.join(root, "workspace");
-    const commandPath = path.join(root, "codex");
+    const commandPath = await writeFakeCodexCommand(path.join(root, "codex"));
     const capturePath = path.join(root, "capture.json");
     const sharedCodexHome = path.join(root, "shared-codex-home");
     const paperclipHome = path.join(root, "paperclip-home");
@@ -60,8 +68,6 @@ describe("codex execute", () => {
     await fs.mkdir(sharedCodexHome, { recursive: true });
     await fs.writeFile(path.join(sharedCodexHome, "auth.json"), '{"token":"shared"}\n', "utf8");
     await fs.writeFile(path.join(sharedCodexHome, "config.toml"), 'model = "codex-mini-latest"\n', "utf8");
-    await writeFakeCodexCommand(commandPath);
-
     const previousHome = process.env.HOME;
     const previousPaperclipHome = process.env.PAPERCLIP_HOME;
     const previousPaperclipInstanceId = process.env.PAPERCLIP_INSTANCE_ID;
@@ -142,10 +148,9 @@ describe("codex execute", () => {
   it("emits a command note that Codex auto-applies repo-scoped AGENTS.md files", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-codex-execute-notes-"));
     const workspace = path.join(root, "workspace");
-    const commandPath = path.join(root, "codex");
+    const commandPath = await writeFakeCodexCommand(path.join(root, "codex"));
     const capturePath = path.join(root, "capture.json");
     await fs.mkdir(workspace, { recursive: true });
-    await writeFakeCodexCommand(commandPath);
 
     const previousHome = process.env.HOME;
     process.env.HOME = root;
@@ -199,11 +204,10 @@ describe("codex execute", () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-codex-execute-meta-"));
     const workspace = path.join(root, "workspace");
     const binDir = path.join(root, "bin");
-    const commandPath = path.join(binDir, "codex");
     const capturePath = path.join(root, "capture.json");
     await fs.mkdir(workspace, { recursive: true });
     await fs.mkdir(binDir, { recursive: true });
-    await writeFakeCodexCommand(commandPath);
+    const commandPath = await writeFakeCodexCommand(path.join(binDir, "codex"));
 
     const previousHome = process.env.HOME;
     const previousPath = process.env.PATH;
@@ -247,9 +251,9 @@ describe("codex execute", () => {
 
       expect(result.exitCode).toBe(0);
       expect(result.errorMessage).toBeNull();
-      expect(loggedCommand).toBe(commandPath);
+      expect(loggedCommand?.toLowerCase()).toBe(commandPath.toLowerCase());
       expect(loggedEnv.HOME).toBe(root);
-      expect(loggedEnv.PAPERCLIP_RESOLVED_COMMAND).toBe(commandPath);
+      expect(loggedEnv.PAPERCLIP_RESOLVED_COMMAND?.toLowerCase()).toBe(commandPath.toLowerCase());
     } finally {
       if (previousHome === undefined) delete process.env.HOME;
       else process.env.HOME = previousHome;
@@ -262,7 +266,7 @@ describe("codex execute", () => {
   it("uses a worktree-isolated CODEX_HOME while preserving shared auth and config", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-codex-execute-"));
     const workspace = path.join(root, "workspace");
-    const commandPath = path.join(root, "codex");
+    const commandPath = await writeFakeCodexCommand(path.join(root, "codex"));
     const capturePath = path.join(root, "capture.json");
     const sharedCodexHome = path.join(root, "shared-codex-home");
     const paperclipHome = path.join(root, "paperclip-home");
@@ -279,8 +283,6 @@ describe("codex execute", () => {
     await fs.mkdir(sharedCodexHome, { recursive: true });
     await fs.writeFile(path.join(sharedCodexHome, "auth.json"), '{"token":"shared"}\n', "utf8");
     await fs.writeFile(path.join(sharedCodexHome, "config.toml"), 'model = "codex-mini-latest"\n', "utf8");
-    await writeFakeCodexCommand(commandPath);
-
     const previousHome = process.env.HOME;
     const previousPaperclipHome = process.env.PAPERCLIP_HOME;
     const previousPaperclipInstanceId = process.env.PAPERCLIP_INSTANCE_ID;
@@ -379,7 +381,7 @@ describe("codex execute", () => {
   it("respects an explicit CODEX_HOME config override even in worktree mode", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-codex-execute-explicit-"));
     const workspace = path.join(root, "workspace");
-    const commandPath = path.join(root, "codex");
+    const commandPath = await writeFakeCodexCommand(path.join(root, "codex"));
     const capturePath = path.join(root, "capture.json");
     const sharedCodexHome = path.join(root, "shared-codex-home");
     const explicitCodexHome = path.join(root, "explicit-codex-home");
@@ -387,8 +389,6 @@ describe("codex execute", () => {
     await fs.mkdir(workspace, { recursive: true });
     await fs.mkdir(sharedCodexHome, { recursive: true });
     await fs.writeFile(path.join(sharedCodexHome, "auth.json"), '{"token":"shared"}\n', "utf8");
-    await writeFakeCodexCommand(commandPath);
-
     const previousHome = process.env.HOME;
     const previousPaperclipHome = process.env.PAPERCLIP_HOME;
     const previousPaperclipInstanceId = process.env.PAPERCLIP_INSTANCE_ID;

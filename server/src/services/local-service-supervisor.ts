@@ -255,8 +255,17 @@ export async function terminateLocalService(
   record: Pick<LocalServiceRegistryRecord, "pid" | "processGroupId">,
   opts?: { signal?: NodeJS.Signals; forceAfterMs?: number },
 ) {
+  if (process.platform === "win32") {
+    try {
+      await execFileAsync("taskkill", ["/PID", String(record.pid), "/T", "/F"]);
+    } catch {
+      // Ignore cleanup races and already-exited processes.
+    }
+    return;
+  }
+
   const signal = opts?.signal ?? "SIGTERM";
-  const targetProcessGroup = process.platform !== "win32" && record.processGroupId && record.processGroupId > 0;
+  const targetProcessGroup = record.processGroupId && record.processGroupId > 0;
   try {
     if (targetProcessGroup) {
       process.kill(-record.processGroupId!, signal);

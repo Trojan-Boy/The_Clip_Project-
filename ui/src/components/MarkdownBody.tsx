@@ -13,6 +13,7 @@ interface MarkdownBodyProps {
 }
 
 let mermaidLoaderPromise: Promise<typeof import("mermaid").default> | null = null;
+let mermaidRenderCounter = 0;
 
 function loadMermaid() {
   if (!mermaidLoaderPromise) {
@@ -25,15 +26,38 @@ function flattenText(value: ReactNode): string {
   if (value == null) return "";
   if (typeof value === "string" || typeof value === "number") return String(value);
   if (Array.isArray(value)) return value.map((item) => flattenText(item)).join("");
+  if (isValidElement(value)) {
+    const props = value.props as { children?: ReactNode };
+    return flattenText(props.children);
+  }
   return "";
+}
+
+const MERMAID_LANGUAGES = new Set(["mermaid", "mmd"]);
+const MERMAID_START_RE =
+  /^\s*(?:---[\s\S]*?---\s*)?(?:graph|flowchart|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|journey|gantt|pie|quadrantChart|requirementDiagram|gitGraph|mindmap|timeline|sankey-beta|xychart-beta|block-beta|architecture-beta|packet-beta|kanban)\b/i;
+
+function normalizeMermaidSource(value: string): string {
+  return value
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/\u00a0/g, " ")
+    .trim();
 }
 
 function extractMermaidSource(children: ReactNode): string | null {
   if (!isValidElement(children)) return null;
   const childProps = children.props as { className?: unknown; children?: ReactNode };
   if (typeof childProps.className !== "string") return null;
-  if (!/\blanguage-mermaid\b/i.test(childProps.className)) return null;
-  return flattenText(childProps.children).replace(/\n$/, "");
+  const language = childProps.className
+    .split(/\s+/)
+    .map((className) => /^language-(.+)$/i.exec(className)?.[1]?.toLowerCase())
+    .find(Boolean);
+  const source = normalizeMermaidSource(flattenText(childProps.children));
+  if (!source) return null;
+  if (language && MERMAID_LANGUAGES.has(language)) return source;
+  if (!language && MERMAID_START_RE.test(source)) return source;
+  return null;
 }
 
 function MermaidDiagramBlock({ source, darkMode }: { source: string; darkMode: boolean }) {
@@ -55,7 +79,10 @@ function MermaidDiagramBlock({ source, darkMode }: { source: string; darkMode: b
           fontFamily: "inherit",
           suppressErrorRendering: true,
         });
-        const rendered = await mermaid.render(`paperclip-mermaid-${renderId}`, source);
+        const rendered = await mermaid.render(
+          `paperclip-mermaid-${renderId}-${++mermaidRenderCounter}`,
+          source,
+        );
         if (!active) return;
         setSvg(rendered.svg);
       })

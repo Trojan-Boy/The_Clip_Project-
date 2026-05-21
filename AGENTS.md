@@ -31,6 +31,21 @@ Before making changes, read in this order:
 - `packages/plugins/`: plugin system packages
 - `doc/`: operational and product docs
 
+## 3.1 Architecture shorthand
+
+Treat the product as four synchronized layers:
+
+1. `packages/shared`: contract and validator layer
+2. `server`: REST API, orchestration, approvals, hierarchy, and scheduler behavior
+3. `packages/adapters` + `packages/plugins`: execution/runtime extension layer
+4. `ui`: board surfaces such as Task Flow, Org Chart, inbox, approvals, and plugins
+
+When fixing a bug, keep the existing source-of-truth endpoints intact instead of inventing parallel paths:
+
+- Org hierarchy: `GET /api/companies/:companyId/org`
+- Task flow: existing company issue APIs consumed by `ui/src/pages/TaskFlow.tsx`
+- Plugin discovery: `GET /api/plugins/examples`
+
 ## 4. Dev Setup (Auto DB)
 
 Use embedded PGlite in dev by leaving `DATABASE_URL` unset.
@@ -137,6 +152,7 @@ When adding endpoints:
 - Keep routes and nav aligned with available API surface
 - Use company selection context for company-scoped pages
 - Surface failures clearly; do not silently ignore API errors
+- For graph surfaces, prefer resilient rendering over blank canvases. Task Flow and Org Chart should keep rendering even when relationships are partial, detached, or cyclic.
 
 ## 10. Definition of Done
 

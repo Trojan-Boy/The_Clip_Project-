@@ -15,6 +15,9 @@ function parseOpenRouterStdoutLine(line: string, ts: string): TranscriptEntry[] 
 function buildOpenRouterConfig(values: CreateConfigValues): Record<string, unknown> {
   const config: Record<string, unknown> = {};
   if (values.model) config.model = values.model;
+  if (values.apiKey) config.apiKey = values.apiKey;
+  if (values.baseUrl) config.baseUrl = values.baseUrl;
+  if (values.systemPrompt) config.systemPrompt = values.systemPrompt;
   if (values.promptTemplate) config.promptTemplate = values.promptTemplate;
   return config;
 }

@@ -259,7 +259,7 @@ export async function executeToolCall(
           title: args.title,
           capabilities: args.capabilities,
           adapterType: args.adapterType ?? "openrouter",
-          adapterConfig: args.adapterConfig ?? { model: "google/gemini-2.5-flash", timeoutSec: 120 },
+          adapterConfig: args.adapterConfig ?? { model: "google/gemini-2.5-flash", timeoutSec: 300 },
           runtimeConfig: { heartbeat: { enabled: true, intervalSec: 300, wakeOnDemand: true } },
         };
         if (args.icon) payload.icon = args.icon;
@@ -295,6 +295,57 @@ export async function executeToolCall(
         });
         const out = { name: call.name, content: formatResult(result.data), isError: !result.ok };
         await tryLogToolUsage(ctx, { tool: call.name, ok: result.ok });
+        return out;
+      }
+
+      case "paperclip_request_clarification": {
+        const issueId = asNonEmptyString(args.issueId);
+        const questions = Array.isArray(args.questions)
+          ? args.questions
+              .map((question) => asNonEmptyString(question))
+              .filter((question): question is string => Boolean(question))
+          : [];
+        if (!issueId) {
+          return { name: call.name, content: "issueId is required", isError: true };
+        }
+        if (questions.length === 0) {
+          return { name: call.name, content: "At least one clarification question is required", isError: true };
+        }
+
+        const blocking = args.blocking !== false;
+        const assumptions = asNonEmptyString(args.assumptions);
+        const body = [
+          "Clarification needed:",
+          "",
+          ...questions.map((question, index) => `${index + 1}. ${question}`),
+          ...(assumptions ? ["", `Assumptions if unanswered: ${assumptions}`] : []),
+        ].join("\n");
+        const commentResult = await apiCall(ctx, "POST", `/issues/${issueId}/comments`, { body });
+        if (!commentResult.ok) {
+          const out = { name: call.name, content: formatResult(commentResult.data), isError: true };
+          await tryLogToolUsage(ctx, { tool: call.name, ok: false });
+          return out;
+        }
+
+        let blockResult: { ok: boolean; status: number; data: unknown } | null = null;
+        if (blocking) {
+          blockResult = await apiCall(ctx, "PATCH", `/issues/${issueId}`, {
+            status: "blocked",
+            comment: "Blocked pending clarification.",
+          });
+        }
+
+        const ok = !blockResult || blockResult.ok;
+        const out = {
+          name: call.name,
+          content: formatResult({
+            comment: commentResult.data,
+            blocked: blocking,
+            blockUpdate: blockResult?.data ?? null,
+          }),
+          isError: !ok,
+        };
+        await tryLogToolUsage(ctx, { tool: call.name, ok, details: { blocking } });
         return out;
       }
 

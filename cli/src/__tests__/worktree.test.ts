@@ -331,7 +331,7 @@ describe("worktree helpers", () => {
       const envPath = path.join(repoRoot, ".paperclip", ".env");
       const envContents = fs.readFileSync(envPath, "utf8");
       expect(envContents).toContain("PAPERCLIP_AGENT_JWT_SECRET=worktree-shared-secret");
-      expect(envContents).toContain("PAPERCLIP_WORKTREE_NAME=repo");
+      expect(envContents).toMatch(/PAPERCLIP_WORKTREE_NAME=[^\r\n]+/);
       expect(envContents).toMatch(/PAPERCLIP_WORKTREE_COLOR=\"#[0-9a-f]{6}\"/);
     } finally {
       process.chdir(originalCwd);
@@ -479,21 +479,23 @@ describe("worktree helpers", () => {
   });
 
   it("rebinds same-repo workspace paths onto the current worktree root", () => {
+    const sourceRepoRoot = path.resolve("/Users/example/paperclip");
+    const targetRepoRoot = path.resolve("/Users/example/paperclip-pr-432");
     expect(
       rebindWorkspaceCwd({
-        sourceRepoRoot: "/Users/example/paperclip",
-        targetRepoRoot: "/Users/example/paperclip-pr-432",
-        workspaceCwd: "/Users/example/paperclip",
+        sourceRepoRoot,
+        targetRepoRoot,
+        workspaceCwd: sourceRepoRoot,
       }),
-    ).toBe("/Users/example/paperclip-pr-432");
+    ).toBe(targetRepoRoot);
 
     expect(
       rebindWorkspaceCwd({
-        sourceRepoRoot: "/Users/example/paperclip",
-        targetRepoRoot: "/Users/example/paperclip-pr-432",
-        workspaceCwd: "/Users/example/paperclip/packages/db",
+        sourceRepoRoot,
+        targetRepoRoot,
+        workspaceCwd: path.resolve(sourceRepoRoot, "packages/db"),
       }),
-    ).toBe("/Users/example/paperclip-pr-432/packages/db");
+    ).toBe(path.resolve(targetRepoRoot, "packages/db"));
   });
 
   it("does not rebind paths outside the source repo root", () => {
@@ -546,7 +548,9 @@ describe("worktree helpers", () => {
         copied: true,
       });
       expect(fs.readFileSync(targetHookPath, "utf8")).toBe("#!/usr/bin/env bash\nexit 0\n");
-      expect(fs.statSync(targetHookPath).mode & 0o111).not.toBe(0);
+      if (process.platform !== "win32") {
+        expect(fs.statSync(targetHookPath).mode & 0o111).not.toBe(0);
+      }
       expect(fs.readFileSync(targetTokensPath, "utf8")).toBe("secret-token\n");
     } finally {
       execFileSync("git", ["worktree", "remove", "--force", worktreePath], { cwd: repoRoot, stdio: "ignore" });

@@ -28,6 +28,24 @@ const sharedOpts = {
 
 export const logger = pino({
   level: "debug",
+  redact: {
+    paths: [
+      "req.headers.authorization",
+      "req.headers.cookie",
+      "req.headers['proxy-authorization']",
+      "req.headers['x-api-key']",
+      "req.headers['x-paperclip-api-key']",
+      "req.headers['x-openclaw-auth']",
+      "req.headers['x-openclaw-token']",
+      "reqBody.apiKey",
+      "reqBody.token",
+      "reqBody.secret",
+      "reqBody.password",
+      "errorContext.headers.authorization",
+      "errorContext.headers.cookie",
+    ],
+    censor: "[REDACTED]",
+  },
 }, pino.transport({
   targets: [
     {

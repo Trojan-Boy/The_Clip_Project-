@@ -46,4 +46,18 @@ describe("MarkdownBody", () => {
     expect(html).toContain('data-mention-kind="project"');
     expect(html).toContain("--paperclip-mention-project-color:#336699");
   });
+
+  it("detects Mermaid and mmd graph fences for knowledge graph previews", () => {
+    const html = renderToStaticMarkup(
+      <ThemeProvider>
+        <MarkdownBody>
+          {"```mmd\nflowchart LR\n  A --> B\n```"}
+        </MarkdownBody>
+      </ThemeProvider>,
+    );
+
+    expect(html).toContain("paperclip-mermaid");
+    expect(html).toContain("Rendering Mermaid diagram");
+    expect(html).toContain("flowchart LR");
+  });
 });

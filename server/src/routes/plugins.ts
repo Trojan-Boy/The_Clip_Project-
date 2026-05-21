@@ -147,6 +147,30 @@ const BUNDLED_PLUGIN_EXAMPLES: AvailablePluginExample[] = [
     localPath: "packages/plugins/examples/plugin-web-research",
     tag: "example",
   },
+  {
+    packageName: "@paperclipai/plugin-rag-memory",
+    pluginKey: "paperclip-rag-memory",
+    displayName: "RAG Memory",
+    description: "Indexes issues, comments, goals, and agent metadata into a searchable company memory layer.",
+    localPath: "packages/plugins/examples/plugin-rag-memory",
+    tag: "example",
+  },
+  {
+    packageName: "@paperclipai/plugin-graph-search",
+    pluginKey: "paperclip-graph-search",
+    displayName: "Graph Search",
+    description: "Builds a relationship graph across issues, goals, and reporting lines with Mermaid export tools.",
+    localPath: "packages/plugins/examples/plugin-graph-search",
+    tag: "example",
+  },
+  {
+    packageName: "@paperclipai/plugin-swarm-coordinator",
+    pluginKey: "paperclip-swarm-coordinator",
+    displayName: "Swarm Coordinator",
+    description: "Adds claim-based no-collision parallel lanes plus scheduled leader sweeps for pending work.",
+    localPath: "packages/plugins/examples/plugin-swarm-coordinator",
+    tag: "example",
+  },
 ];
 
 function listBundledPluginExamples(): AvailablePluginExample[] {

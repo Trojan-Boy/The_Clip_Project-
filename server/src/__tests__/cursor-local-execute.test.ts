@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { execute } from "@paperclipai/adapter-cursor-local/server";
 
-async function writeFakeCursorCommand(commandPath: string): Promise<void> {
+async function writeFakeCursorCommand(baseCommandPath: string): Promise<string> {
   const script = `#!/usr/bin/env node
 const fs = require("node:fs");
 
@@ -36,8 +36,16 @@ console.log(JSON.stringify({
   result: "ok",
 }));
 `;
-  await fs.writeFile(commandPath, script, "utf8");
-  await fs.chmod(commandPath, 0o755);
+  if (process.platform === "win32") {
+    const jsPath = `${baseCommandPath}.js`;
+    const cmdPath = `${baseCommandPath}.cmd`;
+    await fs.writeFile(jsPath, script, "utf8");
+    await fs.writeFile(cmdPath, `@echo off\r\n"${process.execPath}" "%~dp0agent.js" %*\r\n`, "utf8");
+    return cmdPath;
+  }
+  await fs.writeFile(baseCommandPath, script, "utf8");
+  await fs.chmod(baseCommandPath, 0o755);
+  return baseCommandPath;
 }
 
 type CapturePayload = {
@@ -57,13 +65,14 @@ describe("cursor execute", () => {
   it("injects paperclip env vars and prompt note by default", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-cursor-execute-"));
     const workspace = path.join(root, "workspace");
-    const commandPath = path.join(root, "agent");
+    const commandPath = await writeFakeCursorCommand(path.join(root, "agent"));
     const capturePath = path.join(root, "capture.json");
     await fs.mkdir(workspace, { recursive: true });
-    await writeFakeCursorCommand(commandPath);
 
     const previousHome = process.env.HOME;
+    const previousUserProfile = process.env.USERPROFILE;
     process.env.HOME = root;
+    process.env.USERPROFILE = root;
 
     let invocationPrompt = "";
     try {
@@ -125,6 +134,11 @@ describe("cursor execute", () => {
       } else {
         process.env.HOME = previousHome;
       }
+      if (previousUserProfile === undefined) {
+        delete process.env.USERPROFILE;
+      } else {
+        process.env.USERPROFILE = previousUserProfile;
+      }
       await fs.rm(root, { recursive: true, force: true });
     }
   });
@@ -132,13 +146,14 @@ describe("cursor execute", () => {
   it("passes --mode when explicitly configured", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-cursor-execute-mode-"));
     const workspace = path.join(root, "workspace");
-    const commandPath = path.join(root, "agent");
+    const commandPath = await writeFakeCursorCommand(path.join(root, "agent"));
     const capturePath = path.join(root, "capture.json");
     await fs.mkdir(workspace, { recursive: true });
-    await writeFakeCursorCommand(commandPath);
 
     const previousHome = process.env.HOME;
+    const previousUserProfile = process.env.USERPROFILE;
     process.env.HOME = root;
+    process.env.USERPROFILE = root;
 
     try {
       const result = await execute({
@@ -183,6 +198,11 @@ describe("cursor execute", () => {
       } else {
         process.env.HOME = previousHome;
       }
+      if (previousUserProfile === undefined) {
+        delete process.env.USERPROFILE;
+      } else {
+        process.env.USERPROFILE = previousUserProfile;
+      }
       await fs.rm(root, { recursive: true, force: true });
     }
   });
@@ -190,16 +210,17 @@ describe("cursor execute", () => {
   it("injects company-library runtime skills into the Cursor skills home before execution", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-cursor-execute-runtime-skill-"));
     const workspace = path.join(root, "workspace");
-    const commandPath = path.join(root, "agent");
+    const commandPath = await writeFakeCursorCommand(path.join(root, "agent"));
     const runtimeSkillsRoot = path.join(root, "runtime-skills");
     await fs.mkdir(workspace, { recursive: true });
-    await writeFakeCursorCommand(commandPath);
 
     const paperclipDir = await createSkillDir(runtimeSkillsRoot, "paperclip");
     const asciiHeartDir = await createSkillDir(runtimeSkillsRoot, "ascii-heart");
 
     const previousHome = process.env.HOME;
+    const previousUserProfile = process.env.USERPROFILE;
     process.env.HOME = root;
+    process.env.USERPROFILE = root;
 
     try {
       const result = await execute({
@@ -255,6 +276,11 @@ describe("cursor execute", () => {
         delete process.env.HOME;
       } else {
         process.env.HOME = previousHome;
+      }
+      if (previousUserProfile === undefined) {
+        delete process.env.USERPROFILE;
+      } else {
+        process.env.USERPROFILE = previousUserProfile;
       }
       await fs.rm(root, { recursive: true, force: true });
     }

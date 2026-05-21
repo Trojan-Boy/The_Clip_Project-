@@ -254,6 +254,21 @@ function formatCommandForDisplay(command: string, args: string[]) {
     .join(" ");
 }
 
+function resolveShellCommand(command: string): { command: string; args: string[] } {
+  if (process.platform === "win32") {
+    const shell = process.env.ComSpec?.trim() || "cmd.exe";
+    return {
+      command: shell,
+      args: ["/d", "/c", command],
+    };
+  }
+  const shell = process.env.SHELL?.trim() || "/bin/sh";
+  return {
+    command: shell,
+    args: ["-lc", command],
+  };
+}
+
 async function executeProcess(input: {
   command: string;
   args: string[];
@@ -379,10 +394,10 @@ async function runWorkspaceCommand(input: {
   env: NodeJS.ProcessEnv;
   label: string;
 }) {
-  const shell = process.env.SHELL?.trim() || "/bin/sh";
+  const shellCommand = resolveShellCommand(input.command);
   const proc = await executeProcess({
-    command: shell,
-    args: ["-c", input.command],
+    command: shellCommand.command,
+    args: shellCommand.args,
     cwd: input.cwd,
     env: input.env,
   });
@@ -475,10 +490,10 @@ async function recordWorkspaceCommandOperation(
     cwd: input.cwd,
     metadata: input.metadata ?? null,
     run: async () => {
-      const shell = process.env.SHELL?.trim() || "/bin/sh";
+      const shellCommand = resolveShellCommand(input.command);
       const result = await executeProcess({
-        command: shell,
-        args: ["-c", input.command],
+        command: shellCommand.command,
+        args: shellCommand.args,
         cwd: input.cwd,
         env: input.env,
       });
@@ -1359,8 +1374,8 @@ async function startLocalRuntimeService(input: {
       );
     }
   }
-  const shell = process.env.SHELL?.trim() || "/bin/sh";
-  const child = spawn(shell, ["-lc", command], {
+  const shellCommand = resolveShellCommand(command);
+  const child = spawn(shellCommand.command, shellCommand.args, {
     cwd: serviceCwd,
     env,
     detached: process.platform !== "win32",

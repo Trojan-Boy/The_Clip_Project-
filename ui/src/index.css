@@ -722,10 +722,16 @@ a.paperclip-mention-chip[data-mention-kind="agent"]::before {
 
 .paperclip-mermaid svg {
   display: block;
-  width: max-content;
+  width: auto;
   max-width: none;
-  min-width: 100%;
+  min-width: min(100%, 42rem);
   height: auto;
+}
+
+.paperclip-mermaid svg [id^="flowchart-"],
+.paperclip-mermaid svg [id^="class-"],
+.paperclip-mermaid svg [id^="state-"] {
+  font-family: inherit;
 }
 
 .paperclip-mermaid-status {

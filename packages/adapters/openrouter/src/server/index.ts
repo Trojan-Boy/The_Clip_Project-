@@ -4,9 +4,13 @@ import type {
   AdapterEnvironmentTestContext,
   AdapterEnvironmentTestResult,
   AdapterSessionCodec,
+  AdapterModel,
 } from "@paperclipai/adapter-utils";
 import { runAgenticLoop, buildEnrichedContext, type ChatMessage } from "@paperclipai/adapter-utils/server";
-import { DEFAULT_OPENROUTER_MODEL, DEFAULT_OPENROUTER_BASE_URL } from "../index.js";
+import { DEFAULT_OPENROUTER_MODEL, DEFAULT_OPENROUTER_BASE_URL, models as fallbackModels } from "../index.js";
+
+const MODEL_CACHE_TTL_MS = 10 * 60 * 1000;
+let modelCache: { key: string; expiresAt: number; models: AdapterModel[] } | null = null;
 
 function readNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
@@ -55,6 +59,64 @@ function resolveBaseUrl(config: Record<string, unknown>): string {
   );
 }
 
+function dedupeModels(models: AdapterModel[]): AdapterModel[] {
+  const seen = new Set<string>();
+  const deduped: AdapterModel[] = [];
+  for (const model of models) {
+    if (!model.id || seen.has(model.id)) continue;
+    seen.add(model.id);
+    deduped.push(model);
+  }
+  return deduped;
+}
+
+function mergeWithFallback(models: AdapterModel[]): AdapterModel[] {
+  return dedupeModels([...models, ...fallbackModels]);
+}
+
+function collectOpenRouterModels(data: unknown): AdapterModel[] {
+  const record = parseObject(data);
+  const entries = Array.isArray(record.data) ? record.data : [];
+  const models: AdapterModel[] = [];
+  for (const entry of entries) {
+    const item = parseObject(entry);
+    const id = readNonEmptyString(item.id);
+    if (!id) continue;
+    const name = readNonEmptyString(item.name);
+    models.push({ id, label: name && name !== id ? `${name} (${id})` : id });
+  }
+  return dedupeModels(models);
+}
+
+export async function listOpenRouterModels(config: Record<string, unknown> = {}): Promise<AdapterModel[]> {
+  const apiKey = resolveApiKey(config);
+  const baseUrl = resolveBaseUrl(config);
+  if (!apiKey) return fallbackModels;
+
+  const cacheKey = `${baseUrl}:${apiKey.slice(0, 8)}:${apiKey.slice(-6)}`;
+  const now = Date.now();
+  if (modelCache && modelCache.key === cacheKey && modelCache.expiresAt > now) {
+    return modelCache.models;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    const response = await fetch(`${baseUrl}/models`, {
+      headers: { "Authorization": `Bearer ${apiKey}` },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!response.ok) return modelCache?.models ?? fallbackModels;
+    const discovered = collectOpenRouterModels(await response.json());
+    const merged = mergeWithFallback(discovered);
+    modelCache = { key: cacheKey, expiresAt: now + MODEL_CACHE_TTL_MS, models: merged };
+    return merged;
+  } catch {
+    return modelCache?.models ?? fallbackModels;
+  }
+}
+
 export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExecutionResult> {
   const { runId, agent, config, context, onLog, onMeta, authToken } = ctx;
 
@@ -73,8 +135,8 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
 
   const model = resolveModel(config);
   const baseUrl = resolveBaseUrl(config);
-  const rawTimeoutSec = asNumber(config.timeoutSec, 120);
-  const timeoutMs = (rawTimeoutSec > 0 ? rawTimeoutSec : 120) * 1000;
+  const rawTimeoutSec = asNumber(config.timeoutSec, 300);
+  const timeoutMs = (rawTimeoutSec > 0 ? rawTimeoutSec : 300) * 1000;
   const temperature = config.temperature != null ? asNumber(config.temperature, 0.7) : undefined;
   const maxTokens = config.maxTokens != null ? asNumber(config.maxTokens, 4096) : undefined;
 

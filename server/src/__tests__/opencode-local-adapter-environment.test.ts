@@ -4,6 +4,25 @@ import os from "node:os";
 import path from "node:path";
 import { testEnvironment } from "@paperclipai/adapter-opencode-local/server";
 
+async function writeFakeOpencodeCommand(binDir: string): Promise<string> {
+  const baseCommandPath = path.join(binDir, "opencode");
+  const script = `#!/usr/bin/env node
+console.error("ProviderModelNotFoundError: ProviderModelNotFoundError");
+console.error('data: { providerID: "openai", modelID: "gpt-5.3-codex", suggestions: [] }');
+process.exit(1);
+`;
+  if (process.platform === "win32") {
+    const jsPath = `${baseCommandPath}.js`;
+    const cmdPath = `${baseCommandPath}.cmd`;
+    await fs.writeFile(jsPath, script, "utf8");
+    await fs.writeFile(cmdPath, `@echo off\r\n"${process.execPath}" "%~dp0opencode.js" %*\r\n`, "utf8");
+    return cmdPath;
+  }
+  await fs.writeFile(baseCommandPath, script, "utf8");
+  await fs.chmod(baseCommandPath, 0o755);
+  return baseCommandPath;
+}
+
 describe("opencode_local environment diagnostics", () => {
   it("reports a missing working directory as an error when cwd is absolute", async () => {
     const cwd = path.join(
@@ -62,19 +81,9 @@ describe("opencode_local environment diagnostics", () => {
   it("classifies ProviderModelNotFoundError probe output as model-unavailable warning", async () => {
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-opencode-env-probe-cwd-"));
     const binDir = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-opencode-env-probe-bin-"));
-    const fakeOpencode = path.join(binDir, "opencode");
-    const script = [
-      "#!/bin/sh",
-      "echo 'ProviderModelNotFoundError: ProviderModelNotFoundError' 1>&2",
-      "echo 'data: { providerID: \"openai\", modelID: \"gpt-5.3-codex\", suggestions: [] }' 1>&2",
-      "exit 1",
-      "",
-    ].join("\n");
+    const fakeOpencode = await writeFakeOpencodeCommand(binDir);
 
     try {
-      await fs.writeFile(fakeOpencode, script, "utf8");
-      await fs.chmod(fakeOpencode, 0o755);
-
       const result = await testEnvironment({
         companyId: "company-1",
         adapterType: "opencode_local",

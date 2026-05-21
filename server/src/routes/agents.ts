@@ -13,6 +13,7 @@ import {
   deriveAgentUrlKey,
   isUuidLike,
   resetAgentSessionSchema,
+  rotateAgentKeySchema,
   testAdapterEnvironmentSchema,
   type AgentSkillSnapshot,
   type InstanceSchedulerHeartbeatAgent,
@@ -257,6 +258,14 @@ export function agentRoutes(db: Db) {
     if (!actorAgent || actorAgent.companyId !== targetAgent.companyId) {
       throw forbidden("Agent key cannot access another company");
     }
+  }
+
+  async function assertCanManageAgentKeys(req: Request, agentId: string) {
+    assertBoard(req);
+    const agent = await svc.getById(agentId);
+    if (!agent) throw notFound("Agent not found");
+    assertCompanyAccess(req, agent.companyId);
+    return agent;
   }
 
   async function resolveCompanyIdForAgentReference(req: Request): Promise<string | null> {
@@ -2013,37 +2022,62 @@ export function agentRoutes(db: Db) {
   });
 
   router.get("/agents/:id/keys", async (req, res) => {
-    assertBoard(req);
     const id = req.params.id as string;
+    await assertCanManageAgentKeys(req, id);
     const keys = await svc.listKeys(id);
     res.json(keys);
   });
 
   router.post("/agents/:id/keys", validate(createAgentKeySchema), async (req, res) => {
-    assertBoard(req);
     const id = req.params.id as string;
+    const agent = await assertCanManageAgentKeys(req, id);
     const key = await svc.createApiKey(id, req.body.name);
 
-    const agent = await svc.getById(id);
-    if (agent) {
-      await logActivity(db, {
-        companyId: agent.companyId,
-        actorType: "user",
-        actorId: req.actor.userId ?? "board",
-        action: "agent.key_created",
-        entityType: "agent",
-        entityId: agent.id,
-        details: { keyId: key.id, name: key.name },
-      });
-    }
+    await logActivity(db, {
+      companyId: agent.companyId,
+      actorType: "user",
+      actorId: req.actor.userId ?? "board",
+      action: "agent.key_created",
+      entityType: "agent",
+      entityId: agent.id,
+      details: { keyId: key.id, name: key.name },
+    });
 
     res.status(201).json(key);
   });
 
-  router.delete("/agents/:id/keys/:keyId", async (req, res) => {
-    assertBoard(req);
+  router.post("/agents/:id/keys/:keyId/rotate", validate(rotateAgentKeySchema), async (req, res) => {
+    const id = req.params.id as string;
     const keyId = req.params.keyId as string;
-    const revoked = await svc.revokeKey(keyId);
+    const agent = await assertCanManageAgentKeys(req, id);
+    const rotated = await svc.rotateKey(id, keyId, req.body.name);
+    if (!rotated) {
+      res.status(404).json({ error: "Key not found" });
+      return;
+    }
+
+    await logActivity(db, {
+      companyId: agent.companyId,
+      actorType: "user",
+      actorId: req.actor.userId ?? "board",
+      action: "agent.key_rotated",
+      entityType: "agent",
+      entityId: agent.id,
+      details: {
+        keyId: rotated.id,
+        rotatedFromKeyId: rotated.rotatedFromKeyId,
+        name: rotated.name,
+      },
+    });
+
+    res.status(201).json(rotated);
+  });
+
+  router.delete("/agents/:id/keys/:keyId", async (req, res) => {
+    const id = req.params.id as string;
+    const keyId = req.params.keyId as string;
+    await assertCanManageAgentKeys(req, id);
+    const revoked = await svc.revokeKey(id, keyId);
     if (!revoked) {
       res.status(404).json({ error: "Key not found" });
       return;

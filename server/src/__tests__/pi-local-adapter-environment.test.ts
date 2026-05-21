@@ -5,8 +5,7 @@ import path from "node:path";
 import { testEnvironment } from "@paperclipai/adapter-pi-local/server";
 
 async function writeFakePiCommand(binDir: string, mode: "success" | "stale-package"): Promise<void> {
-  const commandPath = path.join(binDir, "pi");
-  const script =
+  const scriptBody =
     mode === "success"
       ? `#!/usr/bin/env node
 if (process.argv.includes("--list-models")) {
@@ -34,7 +33,16 @@ if (process.argv.includes("--list-models")) {
 }
 process.exit(1);
 `;
-  await fs.writeFile(commandPath, script, "utf8");
+  if (process.platform === "win32") {
+    const commandPath = path.join(binDir, "pi.cmd");
+    const scriptPath = path.join(binDir, "pi.js");
+    await fs.writeFile(scriptPath, scriptBody, "utf8");
+    await fs.writeFile(commandPath, `@echo off\r\nnode "%~dp0\\pi.js" %*\r\n`, "utf8");
+    return;
+  }
+
+  const commandPath = path.join(binDir, "pi");
+  await fs.writeFile(commandPath, scriptBody, "utf8");
   await fs.chmod(commandPath, 0o755);
 }
 

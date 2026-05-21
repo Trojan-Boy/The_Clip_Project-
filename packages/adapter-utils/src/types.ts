@@ -332,6 +332,10 @@ export interface CreateConfigValues {
   instructionsFilePath?: string;
   promptTemplate: string;
   model: string;
+  apiKey?: string;
+  baseUrl?: string;
+  systemPrompt?: string;
+  timeoutSec?: number;
   thinkingEffort: string;
   chrome: boolean;
   dangerouslySkipPermissions: boolean;

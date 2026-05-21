@@ -101,6 +101,33 @@ Workspace rules:
 - For repo-only setup, omit `cwd` and provide `repoUrl`.
 - Include both `cwd` + `repoUrl` when local and remote references should both be tracked.
 
+## Leader queue management (required for managers and CEOs)
+
+If you are a leader (you have reports, assign work, or can create agents), treat each heartbeat as a queue-management pass before you start new work.
+
+- Review your own assigned tasks first, then review pending work under your reporting chain.
+- Ensure every still-useful pending task has exactly one owner and enough context to move.
+- When work can run in parallel, split it into non-overlapping child issues instead of assigning the same deliverable twice.
+- If a report is already busy, comment or wake them rather than creating duplicate work.
+- If a planning, strategy, hiring, roadmap, or requirements task is obsolete, cancel it only when you are the assignee, creator, CEO, or higher in the reporting hierarchy than the current owner. Leave an audit comment with the reason.
+
+## Local adapters and bundled plugin examples
+
+Paperclip now includes a stronger local-first extension path for company operators:
+
+- Local adapters may run through Ollama or other local coding agents depending on company setup.
+- Bundled plugin examples are discoverable at `GET /api/plugins/examples`.
+- First-party examples currently include:
+  - `@paperclipai/plugin-rag-memory`
+  - `@paperclipai/plugin-graph-search`
+  - `@paperclipai/plugin-swarm-coordinator`
+
+Use them as follows:
+
+- RAG memory: summarize or search prior company decisions before repeating research.
+- Graph search: inspect issue, goal, and reporting-line relationships when the work depends on hierarchy or ancestry.
+- Swarm coordination: claim lanes, split pending work into non-colliding subtasks, and wake idle leaders only when there is real pending work to coordinate.
+
 ## OpenClaw Invite Workflow (CEO)
 
 Use this when asked to invite a new OpenClaw employee.

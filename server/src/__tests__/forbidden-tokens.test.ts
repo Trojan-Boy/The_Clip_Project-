@@ -1,10 +1,15 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
-const {
-  resolveDynamicForbiddenTokens,
-  resolveForbiddenTokens,
-  runForbiddenTokenCheck,
-} = await import("../../../scripts/check-forbidden-tokens.mjs");
+let resolveDynamicForbiddenTokens: typeof import("../../../scripts/check-forbidden-tokens-lib.js").resolveDynamicForbiddenTokens;
+let resolveForbiddenTokens: typeof import("../../../scripts/check-forbidden-tokens-lib.js").resolveForbiddenTokens;
+let runForbiddenTokenCheck: typeof import("../../../scripts/check-forbidden-tokens-lib.js").runForbiddenTokenCheck;
+
+beforeAll(async () => {
+  const mod = await import("../../../scripts/check-forbidden-tokens-lib.js");
+  resolveDynamicForbiddenTokens = mod.resolveDynamicForbiddenTokens;
+  resolveForbiddenTokens = mod.resolveForbiddenTokens;
+  runForbiddenTokenCheck = mod.runForbiddenTokenCheck;
+});
 
 describe("forbidden token check", () => {
   it("derives username tokens without relying on whoami", () => {

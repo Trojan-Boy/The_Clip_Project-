@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { execute } from "@paperclipai/adapter-claude-local/server";
 
-async function writeFakeClaudeCommand(commandPath: string): Promise<void> {
+async function writeFakeClaudeCommand(baseCommandPath: string): Promise<string> {
   const script = `#!/usr/bin/env node
 const fs = require("node:fs");
 
@@ -21,8 +21,16 @@ console.log(JSON.stringify({ type: "system", subtype: "init", session_id: "claud
 console.log(JSON.stringify({ type: "assistant", session_id: "claude-session-1", message: { content: [{ type: "text", text: "hello" }] } }));
 console.log(JSON.stringify({ type: "result", session_id: "claude-session-1", result: "hello", usage: { input_tokens: 1, cache_read_input_tokens: 0, output_tokens: 1 } }));
 `;
-  await fs.writeFile(commandPath, script, "utf8");
-  await fs.chmod(commandPath, 0o755);
+  if (process.platform === "win32") {
+    const jsPath = `${baseCommandPath}.js`;
+    const cmdPath = `${baseCommandPath}.cmd`;
+    await fs.writeFile(jsPath, script, "utf8");
+    await fs.writeFile(cmdPath, `@echo off\r\n"${process.execPath}" "%~dp0claude.js" %*\r\n`, "utf8");
+    return cmdPath;
+  }
+  await fs.writeFile(baseCommandPath, script, "utf8");
+  await fs.chmod(baseCommandPath, 0o755);
+  return baseCommandPath;
 }
 
 describe("claude execute", () => {
@@ -30,13 +38,12 @@ describe("claude execute", () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-claude-execute-meta-"));
     const workspace = path.join(root, "workspace");
     const binDir = path.join(root, "bin");
-    const commandPath = path.join(binDir, "claude");
     const capturePath = path.join(root, "capture.json");
     const claudeConfigDir = path.join(root, "claude-config");
     await fs.mkdir(workspace, { recursive: true });
     await fs.mkdir(binDir, { recursive: true });
     await fs.mkdir(claudeConfigDir, { recursive: true });
-    await writeFakeClaudeCommand(commandPath);
+    const commandPath = await writeFakeClaudeCommand(path.join(binDir, "claude"));
 
     const previousHome = process.env.HOME;
     const previousPath = process.env.PATH;
@@ -82,10 +89,10 @@ describe("claude execute", () => {
 
       expect(result.exitCode).toBe(0);
       expect(result.errorMessage).toBeNull();
-      expect(loggedCommand).toBe(commandPath);
+      expect(loggedCommand?.toLowerCase()).toBe(commandPath.toLowerCase());
       expect(loggedEnv.HOME).toBe(root);
       expect(loggedEnv.CLAUDE_CONFIG_DIR).toBe(claudeConfigDir);
-      expect(loggedEnv.PAPERCLIP_RESOLVED_COMMAND).toBe(commandPath);
+      expect(loggedEnv.PAPERCLIP_RESOLVED_COMMAND?.toLowerCase()).toBe(commandPath.toLowerCase());
     } finally {
       if (previousHome === undefined) delete process.env.HOME;
       else process.env.HOME = previousHome;

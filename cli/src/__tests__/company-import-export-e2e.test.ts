@@ -15,6 +15,20 @@ import { createStoredZipArchive } from "./helpers/zip.js";
 const execFileAsync = promisify(execFile);
 type ServerProcess = ReturnType<typeof spawn>;
 
+function resolvePaperclipCli(repoRoot: string) {
+  return {
+    command: process.execPath,
+    args: [path.join(repoRoot, "cli", "node_modules", "tsx", "dist", "cli.mjs"), "cli/src/index.ts"],
+  };
+}
+
+function resolveTsxRuntime(repoRoot: string) {
+  return {
+    command: process.execPath,
+    args: [path.join(repoRoot, "cli", "node_modules", "tsx", "dist", "cli.mjs")],
+  };
+}
+
 async function getAvailablePort(): Promise<number> {
   return await new Promise((resolve, reject) => {
     const server = net.createServer();
@@ -185,9 +199,10 @@ async function api<T>(baseUrl: string, pathname: string, init?: RequestInit): Pr
 
 async function runCliJson<T>(args: string[], opts: { apiBase: string; configPath: string }) {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+  const cli = resolvePaperclipCli(repoRoot);
   const result = await execFileAsync(
-    "pnpm",
-    ["--silent", "paperclipai", ...args, "--api-base", opts.apiBase, "--config", opts.configPath, "--json"],
+    cli.command,
+    [...cli.args, ...args, "--api-base", opts.apiBase, "--config", opts.configPath, "--json"],
     {
       cwd: repoRoot,
       env: createCliEnv(),
@@ -250,10 +265,11 @@ describeEmbeddedPostgres("paperclipai company import/export e2e", () => {
     apiBase = `http://127.0.0.1:${port}`;
 
     const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+    const tsx = resolveTsxRuntime(repoRoot);
     const output = { stdout: [] as string[], stderr: [] as string[] };
     const child = spawn(
-      "pnpm",
-      ["paperclipai", "run", "--config", configPath],
+      tsx.command,
+      [...tsx.args, "server/src/index.ts"],
       {
         cwd: repoRoot,
         env: createServerEnv(configPath, port, tempDb.connectionString),

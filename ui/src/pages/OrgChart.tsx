@@ -175,7 +175,7 @@ function sortByHierarchy(nodes: OrgNode[]): OrgNode[] {
   });
 }
 
-function buildFallbackOrgTree(agents: Agent[]): OrgNode[] {
+export function buildFallbackOrgTree(agents: Agent[]): OrgNode[] {
   if (agents.length === 0) return [];
   const activeAgents = agents.filter((agent) => agent.status !== "terminated");
   const byId = new Map(activeAgents.map((agent) => [agent.id, agent]));

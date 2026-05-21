@@ -1,12 +1,19 @@
 import type {
-  AdapterExecutionContext,
-  AdapterExecutionResult,
   AdapterEnvironmentTestContext,
   AdapterEnvironmentTestResult,
+  AdapterExecutionContext,
+  AdapterExecutionResult,
   AdapterSessionCodec,
 } from "@paperclipai/adapter-utils";
-import { runAgenticLoop, buildEnrichedContext, type ChatMessage } from "@paperclipai/adapter-utils/server";
-import { DEFAULT_OLLAMA_MODEL, DEFAULT_OLLAMA_BASE_URL } from "../index.js";
+import {
+  buildEnrichedContext,
+  runAgenticLoop,
+  type ChatMessage,
+} from "@paperclipai/adapter-utils/server";
+import {
+  DEFAULT_OLLAMA_BASE_URL,
+  DEFAULT_OLLAMA_MODEL,
+} from "../index.js";
 
 function readNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
@@ -47,21 +54,77 @@ function resolveBaseUrl(config: Record<string, unknown>): string {
   );
 }
 
+function resolveDefaultTemperature(model: string, config: Record<string, unknown>): number | undefined {
+  if (config.temperature != null) {
+    return asNumber(config.temperature, 0.4);
+  }
+
+  const normalized = model.toLowerCase();
+  if (normalized.includes("gemma")) return 0.2;
+  if (normalized.includes("qwen")) return 0.35;
+  if (normalized.includes("llama")) return 0.4;
+  return 0.4;
+}
+
+function resolveSystemPrompt(model: string, config: Record<string, unknown>): string {
+  const configured = readNonEmptyString(config.systemPrompt);
+  if (configured) return configured;
+
+  const normalized = model.toLowerCase();
+  const basePrompt = `You are an autonomous AI agent working inside a Paperclip company.
+Your job is to execute work, not just describe ideas.
+
+Operating rules:
+1. Start by checking assigned or highest-priority company work.
+2. If coordination tools are available, inspect current work lanes before acting.
+3. If memory or graph tools are available, use them to pull context before making large changes.
+4. Take one concrete action at a time and keep moving until the task is unblocked or complete.
+5. Update task status and leave a useful comment when you finish meaningful work.
+6. If a task should be split, create or delegate non-overlapping subtasks.
+7. Never stop at "I would do X". Actually do X with the available tools.
+8. If there are no clear assignments, identify the next highest-priority pending task and work it.
+
+Behavior requirements:
+- Prefer action over narration.
+- Keep plans short and immediately follow them with execution.
+- Avoid sleeping silently when pending work exists.
+- When local coordination plugins exist, respect claims and avoid collisions.`;
+
+  if (normalized.includes("gemma")) {
+    return `${basePrompt}
+
+Model-specific guidance for Gemma:
+- Use very short action loops.
+- After every tool result, decide the next step in one sentence and continue.
+- Do not write long essays.
+- If you are unsure, gather one more concrete fact with a tool instead of stalling.`;
+  }
+
+  if (normalized.includes("qwen")) {
+    return `${basePrompt}
+
+Model-specific guidance for Qwen:
+- Be concise, decisive, and tool-forward.
+- Use company memory and task lists before making edits.
+- Prefer finishing one lane fully before switching context.`;
+  }
+
+  return basePrompt;
+}
+
 export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExecutionResult> {
-  const { runId, agent, config, context, onLog, onMeta, authToken } = ctx;
+  const { agent, config, context, onLog, onMeta, authToken } = ctx;
 
   const model = resolveModel(config);
   const baseUrl = resolveBaseUrl(config);
-  const rawTimeoutSec = asNumber(config.timeoutSec, 300);
-  const timeoutMs = (rawTimeoutSec > 0 ? rawTimeoutSec : 300) * 1000;
-  const temperature = config.temperature != null ? asNumber(config.temperature, 0.7) : undefined;
+  const rawTimeoutSec = asNumber(config.timeoutSec, 600);
+  const timeoutMs = (rawTimeoutSec > 0 ? rawTimeoutSec : 600) * 1000;
+  const temperature = resolveDefaultTemperature(model, config);
   const numCtx = config.numCtx != null ? asNumber(config.numCtx, 4096) : undefined;
 
-  // Identify workspace / API endpoints
   const cwd = readNonEmptyString(context?.cwd) ?? process.cwd();
   const apiBaseUrl = readNonEmptyString(process.env.PAPERCLIP_API_URL) ?? "http://localhost:3100";
 
-  // Build prompt — enhanced for local models
   const promptTemplate = asString(
     config.promptTemplate,
     "You are agent {{agent.id}} ({{agent.name}}). Continue your Paperclip work.",
@@ -71,24 +134,8 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     .replace(/\{\{agent\.name\}\}/g, agent.name)
     .replace(/\{\{agent\.companyId\}\}/g, agent.companyId);
 
-  // Strong default system prompt for local models that need more guidance
-  const defaultOllamaSystemPrompt = `You are an autonomous AI agent working in a company managed by Paperclip.
-Your job is to EXECUTE tasks, not just discuss them. You have tools available and MUST use them.
+  const systemPrompt = resolveSystemPrompt(model, config);
 
-CRITICAL RULES:
-1. Start by checking your assigned tasks with paperclip_list_issues
-2. Pick a task and work on it using the available tools
-3. When done, update the task status to "done" using paperclip_update_issue
-4. If you need to delegate, create subtasks with paperclip_create_issue
-5. ALWAYS take action. Never just describe what you would do.
-6. Use run_bash_command to execute shell commands
-7. Use read_file and write_file for file operations
-
-You are a DOER, not an advisor. Execute tasks step by step.`;
-
-  const systemPrompt = asString(config.systemPrompt, defaultOllamaSystemPrompt);
-
-  // Fetch issue and agent context from Paperclip API
   const enrichedContext = await buildEnrichedContext(
     context as Record<string, unknown> | undefined,
     {
@@ -101,12 +148,8 @@ You are a DOER, not an advisor. Execute tasks step by step.`;
     },
   );
 
-  // Build initial messages
   const initialMessages: ChatMessage[] = [];
-  const fullSystemPrompt = [
-    systemPrompt,
-    enrichedContext,
-  ].filter(Boolean).join("\n\n");
+  const fullSystemPrompt = [systemPrompt, enrichedContext].filter(Boolean).join("\n\n");
   if (fullSystemPrompt) {
     initialMessages.push({ role: "system", content: fullSystemPrompt });
   }
@@ -115,7 +158,7 @@ You are a DOER, not an advisor. Execute tasks step by step.`;
   if (onMeta) {
     await onMeta({
       adapterType: "ollama",
-      command: `POST ${baseUrl}/api/chat (Agentic Loop — prompt-based tools)`,
+      command: `POST ${baseUrl}/api/chat (Agentic Loop - prompt-guided mode)`,
       cwd,
       env: { OLLAMA_MODEL: model, OLLAMA_BASE_URL: baseUrl },
       prompt: renderedPrompt,
@@ -123,22 +166,25 @@ You are a DOER, not an advisor. Execute tasks step by step.`;
     });
   }
 
-  await onLog("stdout", `[paperclip:ollama] Starting agentic loop with ${model} via Ollama at ${baseUrl} (prompt-based tool mode)...\n`);
+  await onLog(
+    "stdout",
+    `[paperclip:ollama] Starting agentic loop with ${model} via Ollama at ${baseUrl} (prompt-guided tool mode)...\n`,
+  );
 
   const startTime = Date.now();
 
-  // Ollama callLlm — no native tools sent since we use prompt-based mode
-  const callLlm = async (messages: ChatMessage[], tools: unknown[]) => {
+  const callLlm = async (messages: ChatMessage[]) => {
     const requestBody: Record<string, unknown> = {
       model,
       messages,
       stream: false,
-      // Don't send native tools — we use prompt-based mode for reliability
       ...(temperature !== undefined || numCtx !== undefined
-        ? { options: {
-            ...(temperature !== undefined ? { temperature } : {}),
-            ...(numCtx !== undefined ? { num_ctx: numCtx } : {}),
-          } }
+        ? {
+            options: {
+              ...(temperature !== undefined ? { temperature } : {}),
+              ...(numCtx !== undefined ? { num_ctx: numCtx } : {}),
+            },
+          }
         : {}),
     };
 
@@ -157,36 +203,33 @@ You are a DOER, not an advisor. Execute tasks step by step.`;
 
       clearTimeout(timeout);
 
-      if (response.ok) {
-        const data = await response.json() as Record<string, unknown>;
-        const message = parseObject(data.message);
-
-        // Parse usage — Ollama reports eval_count and prompt_eval_count
-        const inputTokens = asNumber(data.prompt_eval_count, 0);
-        const outputTokens = asNumber(data.eval_count, 0);
-
-        return {
-          message: message as unknown as ChatMessage,
-          usage: { inputTokens, outputTokens },
-          model: readNonEmptyString(data.model as string) ?? model,
-          raw: data,
-        };
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "");
+        if (response.status === 404) {
+          throw new Error(`Model "${model}" not found. Pull it first with: ollama pull ${model}`);
+        }
+        throw new Error(`Ollama API returned ${response.status}: ${errorText.slice(0, 500)}`);
       }
 
-      const errorText = await response.text().catch(() => "");
-      let errorMessage = `Ollama API returned ${response.status}: ${errorText.slice(0, 500)}`;
+      const data = (await response.json()) as Record<string, unknown>;
+      const message = parseObject(data.message);
+      const inputTokens = asNumber(data.prompt_eval_count, 0);
+      const outputTokens = asNumber(data.eval_count, 0);
 
-      if (response.status === 404) {
-        errorMessage = `Model "${model}" not found. Pull it first with: ollama pull ${model}`;
-      }
-
-      throw new Error(errorMessage);
-    } catch (err: any) {
+      return {
+        message: message as unknown as ChatMessage,
+        usage: { inputTokens, outputTokens },
+        model: readNonEmptyString(data.model as string) ?? model,
+        raw: data,
+      };
+    } catch (error: unknown) {
       clearTimeout(timeout);
-      if (err.name === "AbortError") {
-        throw new Error(`Request timed out after ${timeoutMs / 1000}s`);
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error(
+          `Request timed out after ${timeoutMs / 1000}s while waiting for Ollama model "${model}". Increase adapterConfig.timeoutSec or use a smaller/faster local model.`,
+        );
       }
-      throw err;
+      throw error;
     }
   };
 
@@ -203,15 +246,13 @@ You are a DOER, not an advisor. Execute tasks step by step.`;
         onLog,
       },
       onLog,
-      // Force prompt-based tool mode for Ollama — local models are unreliable
-      // with native function calling, but work well with explicit prompt instructions
       forcePromptMode: true,
     });
 
     const elapsedMs = Date.now() - startTime;
     await onLog(
       "stdout",
-      `[paperclip:ollama] Completed in ${(elapsedMs / 1000).toFixed(1)}s after ${result.iterations} iterations — ${result.totalUsage.inputTokens} input / ${result.totalUsage.outputTokens} output tokens\n`,
+      `[paperclip:ollama] Completed in ${(elapsedMs / 1000).toFixed(1)}s after ${result.iterations} iterations - ${result.totalUsage.inputTokens} input / ${result.totalUsage.outputTokens} output tokens\n`,
     );
 
     return {
@@ -221,14 +262,15 @@ You are a DOER, not an advisor. Execute tasks step by step.`;
       usage: result.totalUsage,
       provider: "ollama",
       model: result.model ?? model,
-      billingType: "fixed", // Ollama is local/free
+      billingType: "fixed",
       costUsd: 0,
       resultJson: result.raw,
       summary: result.content.slice(0, 500),
     };
-  } catch (error) {
+  } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    const isConnectionRefused = errorMessage.includes("ECONNREFUSED") || errorMessage.includes("fetch failed");
+    const isConnectionRefused =
+      errorMessage.includes("ECONNREFUSED") || errorMessage.includes("fetch failed");
     const hint = isConnectionRefused
       ? `Could not connect to Ollama at ${baseUrl}. Make sure Ollama is running (start it with: ollama serve)`
       : `Ollama execution failed: ${errorMessage}`;
@@ -246,7 +288,6 @@ You are a DOER, not an advisor. Execute tasks step by step.`;
   }
 }
 
-
 export async function testEnvironment(
   ctx: AdapterEnvironmentTestContext,
 ): Promise<AdapterEnvironmentTestResult> {
@@ -262,24 +303,27 @@ export async function testEnvironment(
     message: `Model: ${model}`,
   });
 
-  // Test connectivity
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
-    const response = await fetch(`${baseUrl}/api/tags`, {
-      signal: controller.signal,
-    });
+    const response = await fetch(`${baseUrl}/api/tags`, { signal: controller.signal });
     clearTimeout(timeout);
 
-    if (response.ok) {
-      const data = await response.json() as Record<string, unknown>;
+    if (!response.ok) {
+      checks.push({
+        code: "ollama_api_error",
+        level: "warn",
+        message: `Ollama API returned ${response.status}`,
+      });
+    } else {
+      const data = (await response.json()) as Record<string, unknown>;
       const modelList = Array.isArray(data.models) ? data.models : [];
       const modelNames = modelList
-        .map((m: unknown) => {
-          const obj = parseObject(m);
-          return readNonEmptyString(obj.name);
+        .map((entry: unknown) => {
+          const objectEntry = parseObject(entry);
+          return readNonEmptyString(objectEntry.name);
         })
-        .filter(Boolean);
+        .filter((entry): entry is string => Boolean(entry));
 
       checks.push({
         code: "ollama_running",
@@ -287,11 +331,11 @@ export async function testEnvironment(
         message: `Ollama is running at ${baseUrl} with ${modelNames.length} model(s) available`,
       });
 
-      // Check if selected model is available
       const baseModelName = model.split(":")[0];
       const modelAvailable = modelNames.some(
-        (name) => name === model || name?.startsWith(`${baseModelName}:`) || name === `${model}:latest`,
+        (name) => name === model || name.startsWith(`${baseModelName}:`) || name === `${model}:latest`,
       );
+
       if (!modelAvailable && modelNames.length > 0) {
         checks.push({
           code: "ollama_model_not_pulled",
@@ -307,14 +351,8 @@ export async function testEnvironment(
           message: `Model "${model}" is available`,
         });
       }
-    } else {
-      checks.push({
-        code: "ollama_api_error",
-        level: "warn",
-        message: `Ollama API returned ${response.status}`,
-      });
     }
-  } catch (error) {
+  } catch (error: unknown) {
     const reason = error instanceof Error ? error.message : String(error);
     const isConnectionRefused = reason.includes("ECONNREFUSED") || reason.includes("fetch failed");
     checks.push({
@@ -327,14 +365,19 @@ export async function testEnvironment(
     });
   }
 
-  const hasErrors = checks.some((c) => c.level === "error");
-  const hasWarnings = checks.some((c) => c.level === "warn");
+  const hasErrors = checks.some((check) => check.level === "error");
+  const hasWarnings = checks.some((check) => check.level === "warn");
   const status = hasErrors ? "fail" : hasWarnings ? "warn" : "pass";
 
-  return { adapterType: "ollama", status, checks, testedAt: new Date().toISOString() };
+  return {
+    adapterType: "ollama",
+    status,
+    checks,
+    testedAt: new Date().toISOString(),
+  };
 }
 
-export async function listOllamaModels(): Promise<{ id: string; label: string }[]> {
+export async function listOllamaModels(): Promise<Array<{ id: string; label: string }>> {
   try {
     const baseUrl = readNonEmptyString(process.env.OLLAMA_BASE_URL) ?? DEFAULT_OLLAMA_BASE_URL;
     const controller = new AbortController();
@@ -343,16 +386,17 @@ export async function listOllamaModels(): Promise<{ id: string; label: string }[
     clearTimeout(timeout);
 
     if (!response.ok) return [];
-    const data = await response.json() as Record<string, unknown>;
+    const data = (await response.json()) as Record<string, unknown>;
     const modelList = Array.isArray(data.models) ? data.models : [];
+
     return modelList
-      .map((m: unknown) => {
-        const obj = parseObject(m);
-        const name = readNonEmptyString(obj.name);
+      .map((entry: unknown) => {
+        const objectEntry = parseObject(entry);
+        const name = readNonEmptyString(objectEntry.name);
         if (!name) return null;
         return { id: name, label: name };
       })
-      .filter((m): m is { id: string; label: string } => m !== null);
+      .filter((entry): entry is { id: string; label: string } => entry !== null);
   } catch {
     return [];
   }

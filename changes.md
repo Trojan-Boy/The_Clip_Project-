@@ -1,5 +1,63 @@
 # Changes Applied (Global / Company-Agnostic)
 
+## 7) System audit, graph hardening, and agent-doc sync (2026-05-19)
+
+This pass focused on three things:
+
+1. documenting the current architecture and remediation plan in repo-native docs
+2. hardening the Task Flow / Org Chart / plugin example surfaces with regression coverage
+3. fixing the Windows-heavy test failures that were masking real product work
+
+### New docs
+
+- `doc/plans/2026-05-19-system-audit-remediation.md`
+- `doc/plans/2026-05-19-product-remediation-prd.md`
+- `doc/plans/2026-05-19-backend-runtime-remediation.md`
+
+### Instruction surfaces updated
+
+- `AGENTS.md`
+- `skills/paperclip/SKILL.md`
+- `server/src/onboarding-assets/default/AGENTS.md`
+- `server/src/onboarding-assets/ceo/AGENTS.md`
+
+### Graph and plugin coverage added
+
+- Added Task Flow DAG regression tests for detached-parent and cyclic-parent inputs.
+- Added Org Chart fallback-tree regression tests for orphaned managers and reporting cycles.
+- Added plugin example route coverage to lock in the bundled RAG memory, graph search, and swarm coordinator examples.
+
+### Runtime and test fixes
+
+- Fixed Windows package-manager invocation for worktree bootstrap and CLI e2e coverage.
+- Fixed Windows embedded PostgreSQL test cleanup retries so delayed temp-directory handle release no longer fails otherwise passing suites.
+- Fixed stale test drift in:
+  - `server/src/index.test.js`
+  - `server/src/__tests__/forbidden-tokens.test.ts`
+  - `server/src/__tests__/pi-local-adapter-environment.test.ts`
+  - `cli/src/__tests__/company-import-export-e2e.test.ts`
+  - `cli/src/__tests__/worktree.test.ts`
+
+### Scope note
+
+- This update preserves the existing canonical API surfaces (`/companies/:companyId/org`, issue APIs for Task Flow, and `/plugins/examples`) rather than adding parallel endpoints.
+- The audit/remediation detail now lives in the dated docs above; this file remains the short running change log.
+
+### Verification
+
+- Full workspace typecheck passed: `corepack pnpm -r typecheck`
+- Full workspace tests passed: `corepack pnpm test:run`
+- Full workspace build passed: `corepack pnpm build`
+- Live local smoke passed after restarting a stale dev watcher:
+  - `GET /api/health`
+  - `GET /api/plugins/examples`
+  - `GET /api/companies/POL/org?includeTools=true`
+  - `GET /api/companies/POL/issues`
+  - `GET /companies/POL/task-flow`
+  - `GET /companies/POL/org`
+
+---
+
 Date: 2026-04-28
 
 This document records the backend logic changes implemented to generalize parallel leadership behavior and stabilize org-chart hierarchy handling across the entire project.

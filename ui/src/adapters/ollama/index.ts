@@ -15,6 +15,9 @@ function parseOllamaStdoutLine(line: string, ts: string): TranscriptEntry[] {
 function buildOllamaConfig(values: CreateConfigValues): Record<string, unknown> {
   const config: Record<string, unknown> = {};
   if (values.model) config.model = values.model;
+  if (values.baseUrl) config.baseUrl = values.baseUrl;
+  if (values.systemPrompt) config.systemPrompt = values.systemPrompt;
+  if (values.timeoutSec && values.timeoutSec > 0) config.timeoutSec = values.timeoutSec;
   if (values.promptTemplate) config.promptTemplate = values.promptTemplate;
   return config;
 }

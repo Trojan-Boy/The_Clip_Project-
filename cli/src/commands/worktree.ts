@@ -50,6 +50,7 @@ import { expandHomePrefix } from "../config/home.js";
 import type { PaperclipConfig } from "../config/schema.js";
 import { readConfig, resolveConfigPath, writeConfig } from "../config/store.js";
 import { printPaperclipCliBanner } from "../utils/banner.js";
+import { resolvePnpmInvocation } from "../utils/package-manager.js";
 import { resolveRuntimeLikePath } from "../utils/path-resolver.js";
 import {
   buildWorktreeConfig,
@@ -1102,7 +1103,8 @@ export async function worktreeMakeCommand(nameArg: string, opts: WorktreeMakeOpt
   const installSpinner = p.spinner();
   installSpinner.start("Installing dependencies...");
   try {
-    execFileSync("pnpm", ["install"], {
+    const pnpm = resolvePnpmInvocation(["install"]);
+    execFileSync(pnpm.command, pnpm.args, {
       cwd: targetPath,
       stdio: ["ignore", "pipe", "pipe"],
     });

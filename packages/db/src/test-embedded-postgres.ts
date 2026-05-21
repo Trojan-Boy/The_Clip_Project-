@@ -33,6 +33,39 @@ export type EmbeddedPostgresTestDatabase = {
 
 let embeddedPostgresSupportPromise: Promise<EmbeddedPostgresTestSupport> | null = null;
 
+function isRetryableCleanupError(error: unknown): boolean {
+  if (!error || typeof error !== "object" || !("code" in error)) return false;
+  const code = (error as NodeJS.ErrnoException).code;
+  return code === "EPERM" || code === "EBUSY" || code === "ENOTEMPTY";
+}
+
+async function waitForCleanupRetry(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function cleanupTestDataDir(dataDir: string): Promise<void> {
+  const attempts = process.platform === "win32" ? 10 : 3;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      await fs.promises.rm(dataDir, {
+        recursive: true,
+        force: true,
+        maxRetries: process.platform === "win32" ? 5 : 1,
+        retryDelay: 100,
+      });
+      return;
+    } catch (error) {
+      if (!isRetryableCleanupError(error)) throw error;
+      if (attempt === attempts) {
+        if (process.platform === "win32") return;
+        throw error;
+      }
+      await waitForCleanupRetry(100 * attempt);
+    }
+  }
+}
+
 async function getEmbeddedPostgresCtor(): Promise<EmbeddedPostgresCtor> {
   const mod = await import("embedded-postgres");
   return mod.default as EmbeddedPostgresCtor;
@@ -90,7 +123,7 @@ async function probeEmbeddedPostgresSupport(): Promise<EmbeddedPostgresTestSuppo
     };
   } finally {
     await instance.stop().catch(() => {});
-    fs.rmSync(dataDir, { recursive: true, force: true });
+    await cleanupTestDataDir(dataDir);
   }
 }
 
@@ -131,12 +164,12 @@ export async function startEmbeddedPostgresTestDatabase(
       connectionString,
       cleanup: async () => {
         await instance.stop().catch(() => {});
-        fs.rmSync(dataDir, { recursive: true, force: true });
+        await cleanupTestDataDir(dataDir);
       },
     };
   } catch (error) {
     await instance.stop().catch(() => {});
-    fs.rmSync(dataDir, { recursive: true, force: true });
+    await cleanupTestDataDir(dataDir);
     throw new Error(
       `Failed to start embedded PostgreSQL test database: ${formatEmbeddedPostgresError(error)}`,
     );
