@@ -191,7 +191,6 @@ export async function executeToolCall(
         await tryLogToolUsage(ctx, { tool: call.name, ok: result.ok });
         return out;
       }
-
       case "paperclip_list_my_tool_usage": {
         const lookbackDaysRaw = typeof args.lookbackDays === "number" ? args.lookbackDays : 14;
         const limitRaw = typeof args.limit === "number" ? args.limit : 25;
@@ -200,76 +199,10 @@ export async function executeToolCall(
         const result = await apiCall(
           ctx,
           "GET",
-          `/companies/${ctx.companyId}/tool-usage?agentId=${encodeURIComponent(ctx.agentId)}&lookbackDays=${lookbackDays}&limit=${limit}`,
+          `/companies/${ctx.companyId}/activity?action=agent.tool_called&actorId=${ctx.agentId}&limit=${limit}`
         );
         const out = { name: call.name, content: formatResult(result.data), isError: !result.ok };
-        await tryLogToolUsage(ctx, { tool: call.name, ok: result.ok, details: { lookbackDays, limit } });
-        return out;
-      }
-
-      case "paperclip_list_agents": {
-        const result = await apiCall(ctx, "GET", `/companies/${ctx.companyId}/agents`);
-        if (result.ok && Array.isArray(result.data)) {
-          // Summarize for token efficiency
-          const summary = (result.data as Array<Record<string, unknown>>).map((a) => ({
-            id: a.id,
-            name: a.name,
-            role: a.role,
-            title: a.title,
-            status: a.status,
-            adapterType: a.adapterType,
-          }));
-          const out = { name: call.name, content: formatResult(summary), isError: false };
-          await tryLogToolUsage(ctx, { tool: call.name, ok: true });
-          return out;
-        }
-        const out = { name: call.name, content: formatResult(result.data), isError: !result.ok };
         await tryLogToolUsage(ctx, { tool: call.name, ok: result.ok });
-        return out;
-      }
-
-      case "paperclip_hire_agent": {
-        const desiredName = typeof args.name === "string" ? args.name.trim() : "";
-        const desiredRole = typeof args.role === "string" ? args.role.trim() : "";
-        if (desiredName) {
-          const existing = await apiCall(ctx, "GET", `/companies/${ctx.companyId}/agents`);
-          if (existing.ok && Array.isArray(existing.data)) {
-            const normalizedName = desiredName.toLowerCase();
-            const normalizedRole = desiredRole.toLowerCase();
-            const candidates = (existing.data as Array<Record<string, unknown>>)
-              .filter((agent) => (typeof agent.status === "string" ? agent.status : "") !== "terminated")
-              .filter((agent) => (typeof agent.name === "string" ? agent.name.trim().toLowerCase() : "") === normalizedName);
-            const roleMatch = normalizedRole
-              ? candidates.find((agent) =>
-                  (typeof agent.role === "string" ? agent.role.trim().toLowerCase() : "") === normalizedRole,
-                )
-              : null;
-            const match = roleMatch ?? candidates[0] ?? null;
-            if (match) {
-              const out = { name: call.name, content: formatResult(match), isError: false };
-              await tryLogToolUsage(ctx, { tool: call.name, ok: true, details: { reused: true } });
-              return out;
-            }
-          }
-        }
-
-        const payload: Record<string, unknown> = {
-          name: args.name,
-          role: args.role,
-          title: args.title,
-          capabilities: args.capabilities,
-          adapterType: args.adapterType ?? "openrouter",
-          adapterConfig: args.adapterConfig ?? { model: "google/gemini-2.5-flash", timeoutSec: 300 },
-          runtimeConfig: { heartbeat: { enabled: true, intervalSec: 300, wakeOnDemand: true } },
-        };
-        if (args.icon) payload.icon = args.icon;
-        if (args.reportsTo) payload.reportsTo = args.reportsTo;
-        if (args.desiredSkills) payload.desiredSkills = args.desiredSkills;
-        if (args.sourceIssueId) payload.sourceIssueId = args.sourceIssueId;
-
-        const result = await apiCall(ctx, "POST", `/companies/${ctx.companyId}/agent-hires`, payload);
-        const out = { name: call.name, content: formatResult(result.data), isError: !result.ok };
-        await tryLogToolUsage(ctx, { tool: call.name, ok: result.ok, details: { reused: false } });
         return out;
       }
 

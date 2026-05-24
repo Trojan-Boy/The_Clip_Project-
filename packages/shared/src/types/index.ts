@@ -201,3 +201,14 @@ export type {
   PluginJobRunRecord,
   PluginWebhookDeliveryRecord,
 } from "./plugin.js";
+export type {
+  PersonalOperatorAdapterType,
+  PersonalOperatorRunStatus,
+  PersonalOperatorActionStatus,
+  PersonalOperatorActionMethod,
+  PersonalOperatorSecretRef,
+  PersonalOperatorProfile,
+  PersonalOperatorCompanyPermission,
+  PersonalOperatorRun,
+  PersonalOperatorAction,
+} from "./personal-operator.js";

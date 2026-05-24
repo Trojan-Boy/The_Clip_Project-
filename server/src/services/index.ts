@@ -21,6 +21,12 @@ export { sidebarBadgeService } from "./sidebar-badges.js";
 export { accessService } from "./access.js";
 export { boardAuthService } from "./board-auth.js";
 export { instanceSettingsService } from "./instance-settings.js";
+export {
+  PERSONAL_OPERATOR_ACTION_PRIORITY,
+  assertLoopbackDaemonUrl,
+  personalOperatorService,
+  redactPersonalOperatorSecrets,
+} from "./personal-operator.js";
 export { companyPortabilityService } from "./company-portability.js";
 export { executionWorkspaceService } from "./execution-workspaces.js";
 export { workspaceOperationService } from "./workspace-operations.js";

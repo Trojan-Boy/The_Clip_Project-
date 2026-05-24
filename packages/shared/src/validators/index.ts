@@ -293,3 +293,28 @@ export {
   type SetPluginState,
   type ListPluginState,
 } from "./plugin.js";
+
+export {
+  PERSONAL_OPERATOR_ADAPTER_TYPES,
+  PERSONAL_OPERATOR_ACTION_METHODS,
+  PERSONAL_OPERATOR_ACTION_STATUSES,
+  PERSONAL_OPERATOR_RUN_STATUSES,
+  assertNoRawPersonalOperatorSecrets,
+  isSensitiveConfigKey,
+  personalOperatorSecretRefSchema,
+  personalOperatorAdapterTypeSchema,
+  personalOperatorAdapterConfigSchema,
+  updatePersonalOperatorProfileSchema,
+  upsertPersonalOperatorCompanyPermissionSchema,
+  createPersonalOperatorSessionSchema,
+  createPersonalOperatorRunSchema,
+  recordPersonalOperatorActionSchema,
+  recordPersonalOperatorScreenshotSchema,
+  daemonHealthQuerySchema,
+  type UpdatePersonalOperatorProfile,
+  type UpsertPersonalOperatorCompanyPermission,
+  type CreatePersonalOperatorSession,
+  type CreatePersonalOperatorRun,
+  type RecordPersonalOperatorAction,
+  type RecordPersonalOperatorScreenshot,
+} from "./personal-operator.js";

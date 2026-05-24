@@ -12,6 +12,7 @@ import {
   Repeat,
   Settings,
   GitBranch,
+  MousePointer2,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { SidebarSection } from "./SidebarSection";
@@ -89,6 +90,7 @@ export function Sidebar() {
             badgeTone={inboxBadge.failedRuns > 0 ? "danger" : "default"}
             alert={inboxBadge.failedRuns > 0}
           />
+          <SidebarNavItem to="/personal-ai" label="Personal AI" icon={MousePointer2} textBadge="New" />
           <PluginSlotOutlet
             slotTypes={["sidebar"]}
             context={pluginContext}
