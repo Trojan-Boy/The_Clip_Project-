@@ -1,6 +1,6 @@
 $API = "http://127.0.0.1:3100/api"
 $companyId = "dc006652-4537-4f54-b2c6-8418224815c6"
-$apiKey = "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"
+$apiKey = ""
 
 $agents = Invoke-RestMethod -Uri "$API/companies/$companyId/agents"
 
