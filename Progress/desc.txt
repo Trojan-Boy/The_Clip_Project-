@@ -1,3 +1,1 @@
-"We turn the best YC-grade ideas into live software products using AI — faster and cheaper than any team on earth."
 
-api key oepnrouter :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 
